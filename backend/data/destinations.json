@@ -1,0 +1,72 @@
+[
+  {
+    "id": "1",
+    "name": "Kodaikanal",
+    "location": "Dindigul, Tamil Nadu",
+    "category": "Hill Station",
+    "image": "https://images.unsplash.com/photo-1593457904321-dfa4fa27bf31?q=80&w=1080&auto=format&fit=crop",
+    "rating": 4.7,
+    "description": "Kodaikanal is one of the most popular hill resorts in India. It is a charming hill station, stands amidst sylvan beauty on the southern crest of the upper Palani Hills near Madurai in Tamil Nadu.",
+    "estimated_budget": 15000
+  },
+  {
+    "id": "2",
+    "name": "Ooty",
+    "location": "Nilgiris, Tamil Nadu",
+    "category": "Hill Station",
+    "image": "https://images.unsplash.com/photo-1571216332002-282dce467b32?q=80&w=1080&auto=format&fit=crop",
+    "rating": 4.6,
+    "description": "Ooty, also known as Udhagamandalam, is a popular hill station located in the Nilgiri Hills. Its stunning scenery and pleasant climate make it a favorite destination for tourists.",
+    "estimated_budget": 18000
+  },
+  {
+    "id": "3",
+    "name": "Meenakshi Amman Temple",
+    "location": "Madurai, Tamil Nadu",
+    "category": "Temple Town",
+    "image": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?q=80&w=1080&auto=format&fit=crop",
+    "rating": 4.9,
+    "description": "An ancient and historic Hindu temple located on the southern bank of the Vaigai River in the temple city of Madurai, Tamil Nadu, India. It is dedicated to Meenakshi, a form of Parvati, and her consort, Sundareshwar, a form of Shiva.",
+    "estimated_budget": 8000
+  },
+  {
+    "id": "4",
+    "name": "Marina Beach",
+    "location": "Chennai, Tamil Nadu",
+    "category": "Coastal",
+    "image": "https://images.unsplash.com/photo-1583394838336-acd977736f90?q=80&w=1080&auto=format&fit=crop",
+    "rating": 4.5,
+    "description": "Marina Beach is a natural urban beach in Chennai, Tamil Nadu, India, along the Bay of Bengal. The beach runs from near Fort St. George in the north to Foreshore Estate in the south, a distance of 6.0 km, making it the longest natural urban beach in the country.",
+    "estimated_budget": 5000
+  },
+  {
+    "id": "5",
+    "name": "Rameswaram",
+    "location": "Ramanathapuram, Tamil Nadu",
+    "category": "Temple Town",
+    "image": "https://images.unsplash.com/photo-1596710699500-22ebc8167fe4?q=80&w=1080&auto=format&fit=crop",
+    "rating": 4.8,
+    "description": "Rameswaram is a town on Pamban Island, in the southeast Indian state of Tamil Nadu. It’s known for Ramanathaswamy Temple, a Hindu pilgrimage site with ornate corridors, massive sculpted pillars and sacred water tanks.",
+    "estimated_budget": 12000
+  },
+  {
+    "id": "6",
+    "name": "Yercaud",
+    "location": "Salem, Tamil Nadu",
+    "category": "Hill Station",
+    "image": "https://images.unsplash.com/photo-1623945958807-6bb4556a3eab?q=80&w=1080&auto=format&fit=crop",
+    "rating": 4.4,
+    "description": "Yercaud is a hill station in Salem District, in Tamil Nadu, India. It is located in the Shevaroys range of hills in the Eastern Ghats. It is situated at an altitude of 1515 metres above sea level.",
+    "estimated_budget": 13000
+  },
+  {
+    "id": "7",
+    "name": "Hogenakkal Falls",
+    "location": "Dharmapuri, Tamil Nadu",
+    "category": "Waterfalls",
+    "image": "https://images.unsplash.com/photo-1592927946945-c98511f87bcc?q=80&w=1080&auto=format&fit=crop",
+    "rating": 4.6,
+    "description": "Hogenakkal is a waterfall in South India on the Kaveri river in the Dharmapuri district of the Indian state of Tamil Nadu. It is referred to as the 'Niagara Falls of India'.",
+    "estimated_budget": 4000
+  }
+]
