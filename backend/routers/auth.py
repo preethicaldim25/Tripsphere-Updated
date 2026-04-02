@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Optional
-import jwt
 from bson import ObjectId
 import os
 from dotenv import load_dotenv
@@ -30,17 +29,9 @@ class TokenResponse(BaseModel):
     token_type: str
     user: UserResponse
 
-# Simple password functions (in production, use proper hashing)
-def hash_password(password: str) -> str:
-    return password  # Simple for testing - use bcrypt in production!
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return plain_password == hashed_password  # Simple for testing
-
-# JWT functions
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-for-development")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Using functions from auth module for hashing and token generation
+from auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, hash_password, verify_password
+from jose import jwt
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -142,6 +133,7 @@ async def login(user_data: UserLogin):
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(token: str):
+    from jose import JWTError
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("id")
@@ -161,7 +153,7 @@ async def get_current_user_info(token: str):
             "email": user["email"],
             "role": user.get("role", "user")
         }
-    except jwt.PyJWTError:
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
