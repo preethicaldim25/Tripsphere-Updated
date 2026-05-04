@@ -30,7 +30,7 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 # Using functions from auth module for hashing and token generation
-from auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, hash_password, verify_password
+from auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, hash_password, verify_password, get_current_user
 from jose import jwt
 
 def create_access_token(data: dict):
@@ -158,3 +158,55 @@ async def get_current_user_info(token: str):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
+
+@router.post("/save-place")
+async def save_place(place_data: dict, current_user_id: str = Depends(get_current_user)):
+    """Save a place to user's favorites"""
+    users_collection = get_collection("users")
+    place_id = place_data.get("placeId")
+    if not place_id:
+        raise HTTPException(status_code=400, detail="placeId is required")
+    
+    # Update user document to include the saved place
+    await users_collection.update_one(
+        {"_id": ObjectId(current_user_id)},
+        {"$addToSet": {"saved_places": place_id}}
+    )
+    
+    return {"message": "Place saved successfully", "placeId": place_id}
+
+@router.delete("/save-place/{place_id}")
+async def unsave_place(place_id: str, current_user_id: str = Depends(get_current_user)):
+    """Remove a place from user's favorites"""
+    users_collection = get_collection("users")
+    
+    await users_collection.update_one(
+        {"_id": ObjectId(current_user_id)},
+        {"$pull": {"saved_places": place_id}}
+    )
+    
+    return {"message": "Place removed from favorites"}
+
+@router.get("/saved-places")
+async def get_saved_places(current_user_id: str = Depends(get_current_user)):
+    """Get all saved places for the current user"""
+    users_collection = get_collection("users")
+    user = await users_collection.find_one({"_id": ObjectId(current_user_id)})
+    
+    saved_ids = user.get("saved_places", [])
+    
+    destinations_collection = get_collection("destinations")
+    # Convert IDs to ObjectId
+    object_ids = []
+    for sid in saved_ids:
+        try:
+            object_ids.append(ObjectId(sid))
+        except:
+            pass
+            
+    saved_places = await destinations_collection.find({"_id": {"$in": object_ids}}).to_list(length=None)
+    
+    for place in saved_places:
+        place["id"] = str(place.pop("_id"))
+        
+    return saved_places

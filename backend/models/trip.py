@@ -9,16 +9,14 @@ class ItineraryItem(BaseModel):
 
 class TripBase(BaseModel):
     title: str
-    destination_name: str
-    destination_image: str
-    location: str
+    destination_id: str
     start_date: str
     end_date: str
     total_budget: float
     used_budget: float = 0.0
     status: str = "upcoming"
     members: List[str] = []
-    itinerary: List[ItineraryItem] = []
+    itinerary: List[dict] = []
 
 class TripCreate(TripBase):
     pass

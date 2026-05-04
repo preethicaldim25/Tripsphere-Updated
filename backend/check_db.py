@@ -1,17 +1,22 @@
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 async def check_db():
-    client = AsyncIOMotorClient("mongodb://localhost:27017")
+    uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    client = AsyncIOMotorClient(uri)
     db = client.tripsphere
     destinations = db.destinations
 
     count = await destinations.count_documents({})
     print(f"Total destinations in DB: {count}")
     
-    docs = await destinations.find({}, {"name": 1, "_id": 0}).to_list(length=100)
-    for d in docs:
-        print(d)
+    async for doc in destinations.find({}):
+        print(f"ID: {doc['_id']} | Name: {doc['name']}")
 
     client.close()
 

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, trips, expenses, destinations
+from routers import auth, trips, expenses, destinations, ai
 from database import init_db
 import uvicorn
 import os
@@ -16,19 +16,20 @@ async def startup_event():
     """Initialize database on startup"""
     await init_db()
     port = int(os.getenv("PORT", 8000))
-    print(f"\n🚀 Backend running on:")
+    print(f"\nBackend running on:")
     print(f"   - Local:    http://localhost:{port}")
     print(f"   - Network:  http://0.0.0.0:{port}")
     print(f"   - Docs:     http://localhost:{port}/docs\n")
     print(f"   - Test:     http://192.168.1.74:{port}/health")
 
-# CORS configuration - VERY IMPORTANT for mobile
+# CORS configuration - VERY IMPORTANT for web and mobile
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*", "Authorization", "Content-Type", "Bypass-Tunnel-Reminder"],
+    expose_headers=["*"],
 )
 
 # Root route
@@ -60,8 +61,10 @@ async def health_check():
 # Include routers
 app.include_router(auth.router, prefix="/api")
 app.include_router(destinations.router, prefix="/api")
+app.include_router(destinations.places_router, prefix="/api")
 app.include_router(trips.router, prefix="/api")
 app.include_router(expenses.router, prefix="/api")
+app.include_router(ai.router, prefix="/api")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
