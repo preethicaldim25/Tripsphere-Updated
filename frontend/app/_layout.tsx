@@ -1,0 +1,84 @@
+import { Stack } from 'expo-router';
+import { AuthProvider } from '../context/AuthContext';
+import { ThemeProvider } from '../context/themecontext';
+import { View, Platform, StyleSheet, ViewStyle } from 'react-native';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
+
+export default function RootLayout() {
+  const [loaded, error] = useFonts({
+    ...Ionicons.font,
+  });
+
+  useEffect(() => {
+    if (loaded || error) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, error]);
+
+  if (!loaded && !error) {
+    return null;
+  }
+
+  const rootStyle = Platform.OS === 'web' ? (styles.webOverlay as ViewStyle) : styles.nativeRoot;
+  const containerStyle = Platform.OS === 'web' ? (styles.webContainer as ViewStyle) : styles.nativeRoot;
+
+  return (
+    <AuthProvider>
+      <ThemeProvider>
+        <View style={rootStyle}>
+          <View style={containerStyle}>
+            <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="auth/login" options={{ title: 'Login' }} />
+              <Stack.Screen name="auth/register" options={{ title: 'Register' }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="destination/[name]" options={{ headerShown: false }} />
+              <Stack.Screen name="festivals" options={{ title: 'Festivals & Culture' }} />
+              <Stack.Screen name="plan-trip" options={{ title: 'Plan a Trip' }} />
+              <Stack.Screen name="nearby" options={{ title: 'Nearby Places' }} />
+              <Stack.Screen name="saved" options={{ title: 'Saved Places' }} />
+              <Stack.Screen name="road-trip" options={{ title: 'Road Trip' }} />
+              <Stack.Screen name="weekend-trips" options={{ title: 'Weekend Trips' }} />
+              <Stack.Screen name="hidden-gems" options={{ title: 'Hidden Gems' }} />
+              <Stack.Screen name="popular" options={{ title: 'Popular Places' }} />
+              <Stack.Screen name="category/[name]" options={{ title: 'Category' }} />
+              <Stack.Screen name="expenses/add" options={{ title: 'Add Expense' }} />
+              <Stack.Screen name="trip/[id]" options={{ title: 'Trip Details' }} />
+              <Stack.Screen name="trip/[id]/itinerary" options={{ title: 'Itinerary' }} />
+              <Stack.Screen name="trip/[id]/summary" options={{ title: 'Summary' }} />
+              <Stack.Screen name="map" options={{ title: 'Explore Map' }} />
+              <Stack.Screen name="search" options={{ title: 'Search' }} />
+            </Stack>
+          </View>
+        </View>
+      </ThemeProvider>
+    </AuthProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  nativeRoot: {
+    flex: 1,
+  },
+  webOverlay: {
+    flex: 1,
+    height: '100%',
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webContainer: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#000',
+    overflow: 'hidden',
+    position: 'relative',
+  }
+});
