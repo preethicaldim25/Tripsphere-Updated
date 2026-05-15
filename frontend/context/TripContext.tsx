@@ -1,10 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { 
-  getTrips as getTripsApi, 
-  getTripById as getTripByIdApi,
-  createTrip as createTripApi,
-  updateTrip as updateTripApi,
-  deleteTrip as deleteTripApi
+  tripsAPI
 } from '@/services/api';
 import { useAuth } from './AuthContext';
 
@@ -39,6 +35,7 @@ type TripContextValue = {
   createTrip: (tripData: Partial<Trip>) => Promise<void>;
   updateTrip: (id: string, tripData: Partial<Trip>) => Promise<void>;
   deleteTrip: (id: string) => Promise<void>;
+  refreshTrips: () => Promise<void>;
 };
 
 const TripContext = createContext<TripContextValue | undefined>(undefined);
@@ -50,81 +47,91 @@ export const TripProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
 
   const fetchTrips = useCallback(async (status?: string, page: number = 1) => {
-    if (!user) return;
+    console.log('[AUDIT] 4. fetchTrips started');
+    if (!user) {
+      console.log('[AUDIT] fetchTrips aborted: No user');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
+    
+    // Add a safety timeout to prevent infinite loading
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => {
+          console.log('[AUDIT] 💥 Timeout triggered after 8 seconds!');
+          reject(new Error('Fetch trips timeout'));
+      }, 8000)
+    );
+
     try {
-      const response = await getTripsApi(status, page);
-      if (response.success) {
-        setTrips(response.data);
-      } else {
-        setError(response.message || 'Failed to fetch trips');
-      }
+      console.log('[AUDIT] 5. API request sent via tripsAPI.getAll()');
+      const dataPromise = tripsAPI.getAll();
+      const data = await Promise.race([dataPromise, timeoutPromise]) as Trip[];
+      console.log(`[AUDIT] 6. Backend response received. Valid array? ${Array.isArray(data)} | Count: ${data?.length}`);
+      setTrips(data || []);
+      console.log('[AUDIT] 7. trips state updated');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error connecting to server');
-      console.error('Fetch trips error:', err);
+      setError(err.message || 'Error connecting to server');
+      console.error('[AUDIT] ❌ Fetch trips error caught:', err);
     } finally {
+      console.log('[AUDIT] 8. loading state set false (finally block executed!)');
       setLoading(false);
     }
   }, [user]);
 
-  const getTripById = async (id: string): Promise<Trip | null> => {
+  useEffect(() => {
+    if (user) {
+      fetchTrips();
+    } else {
+      setTrips([]);
+    }
+  }, [user, fetchTrips]);
+
+  const getTripById = useCallback(async (id: string): Promise<Trip | null> => {
     try {
-      const response = await getTripByIdApi(id);
-      return response.success ? response.data : null;
+      return await tripsAPI.getById(id);
     } catch (err) {
       console.error('Get trip by id error:', err);
       return null;
     }
-  };
+  }, []);
 
-  const createTrip = async (tripData: Partial<Trip>) => {
+  const createTrip = useCallback(async (tripData: Partial<Trip>) => {
     setLoading(true);
     try {
-      const response = await createTripApi(tripData);
-      if (response.success) {
-        await fetchTrips(tripData.status);
-      } else {
-        throw new Error(response.message);
-      }
+      await tripsAPI.create(tripData as any);
+      await fetchTrips();
     } catch (err: any) {
       throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchTrips]);
 
-  const updateTrip = async (id: string, tripData: Partial<Trip>) => {
+  const updateTrip = useCallback(async (id: string, tripData: Partial<Trip>) => {
     setLoading(true);
     try {
-      const response = await updateTripApi(id, tripData);
-      if (response.success) {
-        setTrips(prev => prev.map(t => t._id === id ? response.data : t));
-      } else {
-        throw new Error(response.message);
-      }
+      await tripsAPI.update(id, tripData as any);
+      setTrips(prev => prev.map(t => t._id === id || t.id === id ? { ...t, ...tripData } : t));
     } catch (err: any) {
       throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const deleteTrip = async (id: string) => {
+  const deleteTrip = useCallback(async (id: string) => {
     setLoading(true);
     try {
-      const response = await deleteTripApi(id);
-      if (response.success) {
-        setTrips(prev => prev.filter(t => t._id !== id));
-      } else {
-        throw new Error(response.message);
-      }
+      await tripsAPI.delete(id);
+      setTrips(prev => prev.filter(t => t._id !== id && t.id !== id));
     } catch (err: any) {
       throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return (
     <TripContext.Provider value={{
@@ -135,7 +142,8 @@ export const TripProvider = ({ children }: { children: React.ReactNode }) => {
       getTripById,
       createTrip,
       updateTrip,
-      deleteTrip
+      deleteTrip,
+      refreshTrips: fetchTrips
     }}>
       {children}
     </TripContext.Provider>

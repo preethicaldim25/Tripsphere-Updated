@@ -7,7 +7,7 @@ const getBaseUrl = () => {
     return 'http://localhost:8000/api';
   }
   // Physical devices (Android/iOS) must use the host computer's local IPv4 network address
-  return 'http://192.168.1.155:8000/api';
+  return 'http://192.168.1.151:8000/api';
 };
 
 const api = axios.create({

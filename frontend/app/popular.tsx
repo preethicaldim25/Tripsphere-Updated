@@ -5,16 +5,16 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
   Dimensions,
-  SafeAreaView,
-  StatusBar,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/themecontext';
-import { images, getDestinationImage } from '../constants/images';
+import { images } from '../constants/images';
+import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { AppHeader } from '../components/ui/AppHeader';
+import { GradientCard } from '../components/ui/GradientCard';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 2;
@@ -43,97 +43,21 @@ export default function PopularScreen() {
     : POPULAR_DESTINATIONS.filter(d => d.category === selectedFilter);
 
   const renderDestinationCard = ({ item }: { item: typeof POPULAR_DESTINATIONS[0] }) => (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card }]}
+    <GradientCard
+      name={item.name}
+      subtitle={item.subtitle}
+      category={item.category}
+      rating={item.rating}
+      width={cardWidth}
       onPress={() => router.push(`/destination/${encodeURIComponent(item.name)}`)}
-      activeOpacity={0.9}
-    >
-      <Image 
-        source={{ uri: getDestinationImage(item.name) }} 
-        style={styles.image} 
-        resizeMode="cover"
-      />
-      <View style={styles.overlay}>
-        <View style={styles.cardHeader}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-          <View style={[styles.rating, { backgroundColor: colors.lightPurple }]}>
-            <Ionicons name="star" size={12} color="#FBBF24" />
-            <Text style={[styles.ratingText, { color: colors.primary }]}>{item.rating}</Text>
-          </View>
-        </View>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>{item.subtitle}</Text>
-        <View style={styles.cardFooter}>
-          <View style={styles.tag}>
-            <Ionicons name="pricetag-outline" size={12} color={colors.primary} />
-            <Text style={[styles.tagText, { color: colors.textSecondary }]}>{item.category}</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
+    />
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={colors.card} />
-      <Stack.Screen options={{
-        title: 'Popular Places',
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.text,
-        headerLeft: () => (
-          <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 15 }}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-        ),
-      }} />
+    <ScreenContainer padded={false}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <AppHeader title="Popular Cities" subtitle="Explore Tamil Nadu’s top destinations" />
 
-      {/* Header Stats */}
-      <View style={[styles.statsContainer, { backgroundColor: colors.card }]}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>{POPULAR_DESTINATIONS.length}</Text>
-          <Text style={[styles.statLabel, { color: colors.textLight }]}>Destinations</Text>
-        </View>
-        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>
-            {Math.max(...POPULAR_DESTINATIONS.map(d => d.rating))}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textLight }]}>Top Rated</Text>
-        </View>
-        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>
-            {POPULAR_DESTINATIONS.filter(d => d.rating >= 4.7).length}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textLight }]}>Featured</Text>
-        </View>
-      </View>
-
-      {/* Filter Tabs */}
-      <View style={styles.filterWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {filters.map((filter) => (
-            <TouchableOpacity 
-              key={filter} 
-              style={[
-                styles.filterChip, 
-                { backgroundColor: colors.card, borderColor: colors.border },
-                selectedFilter === filter && { backgroundColor: colors.primary, borderColor: colors.primary }
-              ]}
-              onPress={() => setSelectedFilter(filter)}
-            >
-              <Text style={[
-                styles.filterText, 
-                { color: colors.textSecondary },
-                selectedFilter === filter && { color: '#FFF' }
-              ]}>
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Destinations Grid */}
       <FlatList
         data={filteredDestinations}
         renderItem={renderDestinationCard}
@@ -142,6 +66,56 @@ export default function PopularScreen() {
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <>
+            {/* Header Stats */}
+            <View style={[styles.statsContainer, { backgroundColor: colors.card }]}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>{POPULAR_DESTINATIONS.length}</Text>
+                <Text style={[styles.statLabel, { color: colors.textLight }]}>Destinations</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>
+                  {Math.max(...POPULAR_DESTINATIONS.map(d => d.rating))}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textLight }]}>Top Rated</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>
+                  {POPULAR_DESTINATIONS.filter(d => d.rating >= 4.7).length}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textLight }]}>Featured</Text>
+              </View>
+            </View>
+
+            {/* Filter Tabs */}
+            <View style={styles.filterWrapper}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+                {filters.map((filter) => (
+                  <TouchableOpacity 
+                    key={filter} 
+                    style={[
+                      styles.filterChip, 
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      selectedFilter === filter && { backgroundColor: colors.primary, borderColor: colors.primary }
+                    ]}
+                    onPress={() => setSelectedFilter(filter)}
+                  >
+                    <Text style={[
+                      styles.filterText, 
+                      { color: colors.textSecondary },
+                      selectedFilter === filter && { color: '#FFF' }
+                    ]}>
+                      {filter}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </>
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="search-outline" size={50} color={colors.textLight} />
@@ -149,7 +123,7 @@ export default function PopularScreen() {
           </View>
         }
       />
-    </View>
+    </ScreenContainer>
   );
 }
 
@@ -210,65 +184,6 @@ const styles = StyleSheet.create({
   row: {
     justifyContent: 'space-between',
     marginBottom: 16,
-  },
-  card: {
-    width: cardWidth,
-    borderRadius: 15,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  image: {
-    width: '100%',
-    height: 130,
-  },
-  overlay: {
-    padding: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 4,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  rating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 2,
-  },
-  ratingText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    fontSize: 12,
-    marginBottom: 10,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '500',
   },
   emptyContainer: {
     alignItems: 'center',

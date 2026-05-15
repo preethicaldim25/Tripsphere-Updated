@@ -180,33 +180,34 @@ export default function TripDetailsScreen() {
   const [tripMode, setTripMode] = useState(false);
 
   const getDayPlaces = (trip: any, selectedDay: number) => {
-    const dayData = trip?.itinerary?.find((d: any) => d.day === selectedDay);
-    if (!dayData) return [];
-
-    return (dayData.activities || [])
-      .filter((a: any) => {
-        const lat = a.lat || a.latitude;
-        const lng = a.lng || a.longitude;
-        return lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng));
-      })
-      .map((a: any) => ({
-        name: a.title || a.name || 'Activity',
-        lat: Number(a.lat || a.latitude),
-        lng: Number(a.lng || a.longitude)
-      }));
+    if (!trip || !trip.itinerary) return [];
+    const dayData = trip.itinerary.find((d: any) => d?.day === selectedDay);
+    if (!dayData || !dayData.activities) return [];
+    
+    return dayData.activities.map((a: any) => ({
+      id: a?.id || Math.random().toString(),
+      name: a?.title || a?.location || 'Activity',
+      latitude: Number(a?.coordinates?.lat || a?.lat || 11.0),
+      longitude: Number(a?.coordinates?.lng || a?.lng || 78.0),
+      category: a?.category || 'general'
+    }));
   };
 
   const getMapPlaces = (trip: any, dayNum: number) => {
     // If user has manually defined stops, prioritize them (manual trip mode)
-    if (trip?.stops && trip.stops.length > 0) {
+    if (trip?.stops && Array.isArray(trip.stops) && trip.stops.length > 0) {
       return trip.stops.map((s: any) => ({
-          name: s.name || s,
-          lat: s.coordinates?.lat || s.lat,
-          lng: s.coordinates?.lng || s.lng
-      })).filter(p => p.lat && p.lng);
+          name: s?.name || s || 'Stop',
+          lat: Number(s?.coordinates?.lat || s?.lat || 11.0),
+          lng: Number(s?.coordinates?.lng || s?.lng || 78.0)
+      }));
     }
     // Otherwise derive from itinerary (AI trip mode)
-    return getDayPlaces(trip, dayNum);
+    return getDayPlaces(trip, dayNum).map(p => ({
+        ...p,
+        lat: p.latitude,
+        lng: p.longitude
+    }));
   };
 
   const fadeAnimHeader = useRef(new Animated.Value(0)).current;

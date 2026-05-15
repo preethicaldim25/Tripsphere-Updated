@@ -7,13 +7,13 @@ import {
   Dimensions,
   TouchableOpacity,
   Animated,
-  Image,
   StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../context/themecontext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { SmartImage } from '../components/ui/SmartImage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,21 +22,21 @@ const FEATURED_DESTINATIONS = [
     id: 1,
     name: 'Ooty',
     tagline: 'Queen of Hill Stations',
-    image: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=1080&auto=format&fit=crop',
+    category: 'Hill Station',
     color: '#6B4EFF',
   },
   {
     id: 2,
     name: 'Madurai',
     tagline: 'Temple City',
-    image: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?q=80&w=1080&auto=format&fit=crop',
+    category: 'Temple',
     color: '#FF6B6B',
   },
   {
     id: 3,
     name: 'Mahabalipuram',
     tagline: 'Ancient Temples by Sea',
-    image: 'https://images.unsplash.com/photo-1590074211438-6623668383e7?q=80&w=1080&auto=format&fit=crop',
+    category: 'Heritage',
     color: '#4ECDC4',
   },
 ];
@@ -74,10 +74,15 @@ export default function ExploreIntroScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
-      {/* Background Image */}
-      <Image source={{ uri: currentDestination.image }} style={styles.backgroundImage} />
+      {/* Background Gradient */}
+      <SmartImage
+        gradientOnly={true}
+        name={currentDestination.name}
+        category={currentDestination.category}
+        style={styles.backgroundImage}
+      />
       <LinearGradient
-        colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']}
+        colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.92)']}
         style={styles.gradient}
       />
 

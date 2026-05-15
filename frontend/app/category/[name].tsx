@@ -249,7 +249,7 @@ export default function CategoryScreen() {
   const renderDestination = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.destinationCard}
-      onPress={() => router.push(`/destination/${item.name}`)}
+      onPress={() => router.push(`/destination/${encodeURIComponent(item.name)}`)}
     >
       <Image source={{ uri: item.image }} style={styles.destinationImage} />
       <View style={styles.destinationOverlay}>

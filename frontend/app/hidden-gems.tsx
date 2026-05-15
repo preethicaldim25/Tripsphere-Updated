@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, TextInput, ActivityIndicator, Platform } from 'react-native';
+import { SmartImage } from '../components/ui/SmartImage';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/themecontext';
 import { destinationsAPI, Destination } from '../services/api';
 import { getDestinationImage } from '../constants/images';
 import ExploreMap from '../components/ExploreMap';
+import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { AppHeader } from '../components/ui/AppHeader';
 
 export default function HiddenGemsScreen() {
   const router = useRouter();
@@ -40,38 +43,20 @@ export default function HiddenGemsScreen() {
   const styles = getStyles(colors);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{
-        headerTitle: 'Hidden Gems Explorer',
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.text,
-        headerRight: () => (
+    <ScreenContainer padded={false}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <AppHeader 
+        title="Hidden Gems" 
+        subtitle="Discover unexplored spots" 
+        rightAction={
           <TouchableOpacity 
             onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-            style={{ marginRight: 15 }}
+            style={{ padding: 8, backgroundColor: 'rgba(107, 78, 255, 0.1)', borderRadius: 20 }}
           >
-            <Ionicons name={viewMode === 'list' ? 'map-outline' : 'list-outline'} size={24} color={colors.primary} />
+            <Ionicons name={viewMode === 'list' ? 'map-outline' : 'list-outline'} size={20} color={colors.primary} />
           </TouchableOpacity>
-        ),
-      }} />
-
-      {/* Search Bar */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Ionicons name="search" size={20} color={colors.textLight} />
-        <TextInput
-          style={[styles.searchInput, { color: colors.text }]}
-          placeholder="Enter a destination (e.g. Kodaikanal)"
-          placeholderTextColor={colors.textLight}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => { setSearchQuery(''); fetchGems(); }}>
-            <Ionicons name="close-circle" size={20} color={colors.textLight} />
-          </TouchableOpacity>
-        )}
-      </View>
+        }
+      />
 
       {loading ? (
         <View style={styles.center}>
@@ -90,6 +75,24 @@ export default function HiddenGemsScreen() {
           data={gems}
           keyExtractor={item => item.id || item._id || item.name}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <View style={[styles.searchContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Ionicons name="search" size={20} color={colors.textLight} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Enter a destination (e.g. Kodaikanal)"
+                placeholderTextColor={colors.textLight}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearch}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => { setSearchQuery(''); fetchGems(); }}>
+                  <Ionicons name="close-circle" size={20} color={colors.textLight} />
+                </TouchableOpacity>
+              )}
+            </View>
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="search-outline" size={60} color={colors.textLight} />
@@ -101,33 +104,34 @@ export default function HiddenGemsScreen() {
               style={[styles.card, { backgroundColor: colors.card }]}
               onPress={() => router.push(`/destination/${item.name}`)}
             >
-              <Image 
-                source={{ uri: getDestinationImage(item.name) }} 
+              <SmartImage 
+                gradientOnly={true}
+                name={item.name}
+                category={item.category || 'Nature'}
                 style={styles.image} 
-                resizeMode="cover"
               />
               <View style={styles.overlay}>
-                <View style={styles.header}>
+                <View style={styles.cardHeader}>
                   <Text style={styles.name}>{item.name}</Text>
-                  <View style={styles.rating}>
-                    <Ionicons name="star" size={14} color="#FBBF24" />
+                  <View style={styles.ratingBox}>
+                    <Ionicons name="star" size={12} color="#FBBF24" />
                     <Text style={styles.ratingText}>{item.rating}</Text>
                   </View>
                 </View>
                 <Text style={styles.description} numberOfLines={1}>{item.description}</Text>
-                <View style={styles.footer}>
-                  <View style={styles.location}>
-                    <Ionicons name="location-outline" size={14} color="#fff" />
+                <View style={styles.cardFooter}>
+                  <View style={styles.locationRow}>
+                    <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.7)" />
                     <Text style={styles.locationText}>{item.district || item.location}</Text>
                   </View>
                   <TouchableOpacity 
-                    style={styles.addBtn}
+                    style={styles.exploreBtn}
                     onPress={(e) => {
                       e.stopPropagation();
-                      router.push({ pathname: '/plan-trip', params: { destination: item.name }} as any);
+                      router.push(`/destination/${item.name}`);
                     }}
                   >
-                    <Text style={styles.addBtnText}>Add to Trip</Text>
+                    <Text style={styles.exploreBtnText}>Explorer →</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -135,7 +139,7 @@ export default function HiddenGemsScreen() {
           )}
         />
       )}
-    </View>
+    </ScreenContainer>
   );
 }
 
@@ -165,6 +169,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   list: {
     padding: 16,
     paddingTop: 0,
+    paddingBottom: 100, // Safe padding for bottom tabs
   },
   card: {
     height: 220,
@@ -182,69 +187,68 @@ const getStyles = (colors: any) => StyleSheet.create({
     height: '100%',
   },
   overlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 16,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    padding: 20,
+    justifyContent: 'flex-end',
   },
-  header: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   name: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '900',
     color: '#fff',
+    letterSpacing: -0.5,
   },
-  rating: {
+  ratingBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
+    gap: 4,
   },
   ratingText: {
-    marginLeft: 4,
     fontSize: 12,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '800',
   },
   description: {
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-    marginBottom: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    marginBottom: 16,
   },
-  footer: {
+  cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  location: {
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
   locationText: {
-    marginLeft: 4,
     fontSize: 12,
-    color: '#fff',
-    opacity: 0.8,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
   },
-  addBtn: {
-    backgroundColor: '#6B4EFF',
+  exploreBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
   },
-  addBtnText: {
+  exploreBtnText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   emptyContainer: {
     alignItems: 'center',

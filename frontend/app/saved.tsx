@@ -5,10 +5,10 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SmartImage } from '../components/ui/SmartImage';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -43,7 +43,8 @@ export default function SavedScreen() {
       const savedKey = `saved_${user.id}`;
       const saved = await AsyncStorage.getItem(savedKey);
       if (saved) {
-        setSavedPlaces(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setSavedPlaces(Array.isArray(parsed) ? parsed : []);
       } else {
         setSavedPlaces([]);
       }
@@ -144,8 +145,8 @@ export default function SavedScreen() {
               </Text>
             </View>
             <FlatList
-              data={savedPlaces}
-              keyExtractor={(item) => item.id}
+              data={savedPlaces || []}
+              keyExtractor={(item) => item?.id || Math.random().toString()}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
@@ -154,10 +155,11 @@ export default function SavedScreen() {
                   onPress={() => router.push(`/destination/${item.name}`)}
                   activeOpacity={0.9}
                 >
-                  <Image 
-                    source={{ uri: getDestinationImage(item.name) }} 
+                  <SmartImage 
+                    gradientOnly={true}
+                    name={item.name}
+                    category={item.category}
                     style={styles.cardImage} 
-                    resizeMode="cover"
                   />
                   <View style={styles.cardContent}>
                     <View style={styles.cardHeader}>
@@ -166,26 +168,26 @@ export default function SavedScreen() {
                         onPress={() => removeSavedPlace(item.id, item.name)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
-                        <Ionicons name="heart" size={20} color="#FF6B6B" />
+                        <Ionicons name="heart" size={22} color="#FF6B6B" />
                       </TouchableOpacity>
                     </View>
-                    {item.subtitle && (
-                      <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-                        {item.subtitle}
-                      </Text>
-                    )}
-                    <View style={styles.cardDetails}>
-                      <View style={styles.locationContainer}>
-                        <Ionicons name="location-outline" size={14} color={colors.primary} />
-                        <Text style={[styles.locationText, { color: colors.primary }]}>{item.district}</Text>
-                      </View>
-                      <View style={styles.ratingContainer}>
-                        <Ionicons name="star" size={14} color="#FBBF24" />
-                        <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{item.rating}</Text>
-                      </View>
+                    
+                    <View style={styles.cardMetaRow}>
+                        <View style={styles.locationContainer}>
+                            <Ionicons name="location-outline" size={12} color={colors.primary} />
+                            <Text style={[styles.locationText, { color: colors.textSecondary }]}>{item.district || 'Tamil Nadu'}</Text>
+                        </View>
+                        <View style={styles.ratingContainer}>
+                            <Ionicons name="star" size={12} color="#FBBF24" />
+                            <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{item.rating}</Text>
+                        </View>
                     </View>
-                    <View style={[styles.categoryTag, { backgroundColor: colors.lightPurple }]}>
-                      <Text style={[styles.categoryText, { color: colors.primary }]}>{item.category}</Text>
+
+                    <View style={styles.cardFooter}>
+                        <View style={[styles.categoryTag, { backgroundColor: colors.primary + '10' }]}>
+                            <Text style={[styles.categoryText, { color: colors.primary }]}>{item.category?.toUpperCase()}</Text>
+                        </View>
+                        <Text style={styles.viewDetailsText}>View Details →</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -294,22 +296,19 @@ const getStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   cardName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '900',
     flex: 1,
+    letterSpacing: -0.5,
   },
-  cardSubtitle: {
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  cardDetails: {
+  cardMetaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 15,
+    marginBottom: 15,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -318,6 +317,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   locationText: {
     fontSize: 12,
+    fontWeight: '600',
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -326,15 +326,26 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   ratingText: {
     fontSize: 12,
+    fontWeight: '700',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   categoryTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
   categoryText: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  viewDetailsText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B4EFF',
   },
 });

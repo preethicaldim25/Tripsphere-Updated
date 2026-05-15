@@ -11,10 +11,10 @@ import {
   StatusBar,
   Dimensions,
   Platform,
-  Image
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { tripsAPI, Trip } from '../../services/api';
+import { SmartImage } from '../../components/ui/SmartImage';
+import { useTrip } from '../../context/TripContext';
 import { useAuth } from '../../context/AuthContext';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,56 +23,25 @@ import { useTheme } from '../../context/themecontext';
 const { width } = Dimensions.get('window');
 
 export default function TripsScreen() {
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated, user, logout } = useAuth();
+  const { trips, loading, error, refreshTrips } = useTrip();
+  console.log('[AUDIT] 1. Trips screen rendering (loading:', loading, 'trips count:', trips?.length, ')');
+  const { isAuthenticated, logout } = useAuth();
   const { colors, theme } = useTheme();
   
   const styles = getStyles(colors);
 
   useFocusEffect(
     React.useCallback(() => {
+      console.log('[AUDIT] 2. useFocusEffect triggered (isAuthenticated:', isAuthenticated, ')');
       if (isAuthenticated) {
-        loadTrips();
-      } else {
-        setLoading(false);
-        setTrips([]);
-        setError('Please login to view your trips');
+        console.log('[AUDIT] 3. refreshTrips called');
+        refreshTrips();
       }
-    }, [isAuthenticated])
+    }, [isAuthenticated, refreshTrips])
   );
 
-  const loadTrips = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const token = await AsyncStorage.getItem('token');
-      console.log("🌐 Calling API: /trips/");
-      console.log("🔑 Auth Token present:", token ? "Yes" : "No");
-
-      const data = await tripsAPI.getAll();
-      console.log("📦 Trips API Response:", data);
-      
-      setTrips(data);
-    } catch (error: any) {
-      console.error('❌ Error loading trips:', error);
-      
-      // Handle session expired
-      if (error.message === 'Session expired. Please login again.') {
-        setError('Your session has expired. Please login again.');
-      } else {
-        // Show actual error message for debugging
-        setError(`Failed to load trips: ${error.message || 'Unknown error'}`);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleRetry = () => {
-    loadTrips();
+    refreshTrips();
   };
 
   const handleLogin = () => {
@@ -82,8 +51,6 @@ export default function TripsScreen() {
   const performLogoutAction = async () => {
     try {
       await logout();
-      setTrips([]);
-      setError('Please login to view your trips');
     } catch (e) {
       if (Platform.OS === 'web') {
         window.alert('Failed to logout');
@@ -164,6 +131,7 @@ export default function TripsScreen() {
   }
 
   if (loading) {
+    console.log('[AUDIT] Render: Showing Loading UI');
     return wrapScreen(
       <>
         {renderHeader()}
@@ -175,6 +143,7 @@ export default function TripsScreen() {
     );
   }
 
+  console.log('[AUDIT] 9. render completed successfully with trips');
   return wrapScreen(
     <>
       {renderHeader()}
@@ -216,12 +185,13 @@ export default function TripsScreen() {
               activeOpacity={0.9}
             >
               <View style={styles.imageContainer}>
-                <Image 
-                  source={{ uri: item.destination_details?.image || 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=1080&auto=format&fit=crop' }}
+                <SmartImage 
+                  gradientOnly={true}
+                  name={item.destination_details?.name || item.name}
+                  category={item.destination_details?.category || 'default'}
                   style={styles.cardImage} 
-                  resizeMode="cover"
                 />
-                <View style={[styles.imageRatingBadge, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+                <View style={[styles.imageRatingBadge, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
                   <Ionicons name="wallet-outline" size={12} color="#FBBF24" />
                   <Text style={styles.imageRatingText}>₹{item.budget}</Text>
                 </View>
@@ -325,8 +295,9 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   cardName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '900',
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   cardSubtitle: {
     fontSize: 14,

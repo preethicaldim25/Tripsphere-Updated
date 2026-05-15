@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python virtual env
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# Expo
+.expo/
+
+# Environment
+.env
+
+# Logs
+*.log

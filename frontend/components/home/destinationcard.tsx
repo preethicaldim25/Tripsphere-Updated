@@ -17,6 +17,7 @@ import Animated, {
 import { Destination } from '@/types';
 import { RatingStars } from '@/components/ui/RatingStars';
 import { getDestinationImage } from '@/constants/images';
+import { SmartImage } from '@/components/ui/SmartImage';
 
 const { width } = Dimensions.get('window');
 
@@ -49,27 +50,28 @@ export const DestinationCard: React.FC<Props> = ({
         onPress={onPress}
         activeOpacity={0.9}
       >
-        <Image 
-          source={{ uri: getDestinationImage(destination.name) }} 
+        <SmartImage 
+          gradientOnly={true}
+          name={destination.name}
+          category={destination.category}
           style={styles.image} 
-          resizeMode="cover"
         />
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.7)']}
-          style={styles.gradient}
-        >
-          <View style={styles.content}>
-            <Text style={styles.name}>{destination.name}</Text>
-            <View style={styles.locationContainer}>
-              <Ionicons name="location-outline" size={12} color="#fff" />
-              <Text style={styles.location}>{destination.location}</Text>
+        <View style={styles.content}>
+            <View style={styles.topRow}>
+                <Text style={styles.categoryLabel}>{destination.category?.toUpperCase() || 'EXPLORE'}</Text>
+                <View style={styles.ratingBox}>
+                    <Ionicons name="star" size={10} color="#FFD700" />
+                    <Text style={styles.ratingText}>{destination.rating}</Text>
+                </View>
             </View>
-            <View style={styles.footer}>
-              <RatingStars rating={destination.rating} size={12} />
-              <Text style={styles.reviewCount}>({destination.reviewCount})</Text>
+            <View style={styles.bottomBox}>
+                <Text style={styles.name} numberOfLines={1}>{destination.name}</Text>
+                <View style={styles.locationContainer}>
+                    <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.7)" />
+                    <Text style={styles.location} numberOfLines={1}>{destination.location}</Text>
+                </View>
             </View>
-          </View>
-        </LinearGradient>
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -103,22 +105,45 @@ const styles = StyleSheet.create({
     height: '100%',
     position: 'absolute',
   },
-  gradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '60%',
-    justifyContent: 'flex-end',
-    padding: 12,
-  },
   content: {
+    ...StyleSheet.absoluteFillObject,
+    padding: 15,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  categoryLabel: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  ratingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  ratingText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  bottomBox: {
+    gap: 2,
   },
   name: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -126,19 +151,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   location: {
-    color: '#FFFFFF',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 12,
-    opacity: 0.8,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  reviewCount: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    opacity: 0.7,
+    fontWeight: '600',
   },
 });

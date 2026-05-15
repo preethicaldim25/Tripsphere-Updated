@@ -7,7 +7,7 @@ import {
   StatusBar, ActivityIndicator, Platform,
 } from 'react-native';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
-import { Image } from 'expo-image';
+import { SmartImage } from '../../components/ui/SmartImage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -17,7 +17,7 @@ import Animated, {
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/themecontext';
 import { destinationService } from '../../services/destination.service';
-import { getDestinationImage } from '../../constants/images';
+import { getDestinationImage, CATEGORY_THEMES } from '../../constants/images';
 
 // ─────────────────────────────────────────────
 // Constants
@@ -90,37 +90,36 @@ const HeroCarousel = ({ data, onPress, colors }: any) => {
     }
   }, [currentIndex, data.length]);
 
-  const renderItem = useCallback(({ item }: any) => (
-    <TouchableOpacity
-      activeOpacity={0.93}
-      onPress={() => onPress(item.id)}
-      style={{ width: SLIDE_W, height: HERO_H }}
-    >
-      <Image
-        source={{ uri: getDestinationImage(item.title) }}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        transition={300}
-      />
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.85)']}
-        style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', padding: 24, paddingBottom: 36 }]}
-      >
-        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 }}>{item.subtitle}</Text>
-        <Text style={{ color: '#fff', fontSize: 34, fontWeight: '900', letterSpacing: -0.5, marginBottom: 12 }}>{item.title}</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {(item.tags || []).map((t: string) => (
-            <View key={t} style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>{t}</Text>
+  const renderItem = useCallback(({ item }: any) => {
+    const themeInfo = CATEGORY_THEMES[item.category?.toLowerCase()] || CATEGORY_THEMES.default;
+    return (
+        <TouchableOpacity
+        activeOpacity={0.93}
+        onPress={() => onPress(item.id)}
+        style={{ width: SLIDE_W, height: HERO_H }}
+        >
+        <SmartImage
+            gradientOnly={true}
+            name={item.title}
+            category={item.category}
+            style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.6)']}
+            style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', padding: 24 }]}
+        >
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, marginBottom: 8 }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 }}>{themeInfo.vibe}</Text>
             </View>
-          ))}
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  ), [onPress]);
+            <Text style={{ color: '#fff', fontSize: 32, fontWeight: '900', letterSpacing: -1, marginBottom: 4 }}>{item.title}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600' }}>{item.subtitle}</Text>
+        </LinearGradient>
+        </TouchableOpacity>
+    );
+  }, [onPress]);
 
   return (
-    <View style={{ height: HERO_H, overflow: 'hidden', borderRadius: 20, marginHorizontal: 16 }}>
+    <View style={{ height: HERO_H, overflow: 'hidden', borderRadius: 28, marginHorizontal: 16 }}>
       <FlatList
         ref={flatRef}
         data={data}
@@ -136,17 +135,15 @@ const HeroCarousel = ({ data, onPress, colors }: any) => {
         style={{ width: SLIDE_W }}
         getItemLayout={(_, index) => ({ length: SLIDE_W, offset: SLIDE_W * index, index })}
       />
-      
-      {/* Pagination Dots */}
       <View style={{ position: 'absolute', bottom: 12, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
         {data.map((_: any, i: number) => (
           <View
             key={i}
             style={{
-              width: currentIndex === i ? 7 : 7,
-              height: 7,
-              borderRadius: 3.5,
-              backgroundColor: currentIndex === i ? '#A990FF' : 'rgba(255, 255, 255, 0.4)',
+              width: currentIndex === i ? 12 : 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: currentIndex === i ? '#fff' : 'rgba(255, 255, 255, 0.4)',
             }}
           />
         ))}
@@ -172,40 +169,44 @@ const SectionHeader = ({ title, onViewAll, colors }: any) => (
 // Destination Card (used in horizontal lists)
 // ─────────────────────────────────────────────
 const DestCard = ({ item, onPress, colors }: any) => {
-  const crowdColor = item.crowd === 'Low' ? '#4CAF50' : item.crowd === 'Medium' ? '#FF9800' : '#F44336';
+  const themeInfo = CATEGORY_THEMES[item.category?.toLowerCase()] || CATEGORY_THEMES.default;
   return (
     <TouchableOpacity
       onPress={() => onPress(item.id || item.name)}
       activeOpacity={0.9}
       style={{
-        width: '100%', height: 220, borderRadius: 16, overflow: 'hidden',
-        marginBottom: 16,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
+        width: '100%', height: 200, borderRadius: 24, overflow: 'hidden',
+        marginBottom: 16, backgroundColor: colors.card,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
       }}
     >
-      <Image source={{ uri: getDestinationImage(item.name) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.78)']} style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', padding: 14 }]}>
-        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
-          <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{item.category}</Text>
-          </View>
-          <View style={{ backgroundColor: crowdColor, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{item.crowd} Crowd</Text>
-          </View>
+      <SmartImage 
+        gradientOnly={true}
+        name={item.name}
+        category={item.category}
+        style={StyleSheet.absoluteFill} 
+      />
+      <View style={{ ...StyleSheet.absoluteFillObject, padding: 20, justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
+                <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900', textTransform: 'uppercase' }}>{themeInfo.vibe}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                <Ionicons name="sunny-outline" size={12} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{item.temperature || '28°C'}</Text>
+            </View>
         </View>
-        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 4 }}>{item.name}</Text>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Ionicons name="star" size={12} color="#FFD700" />
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{item.rating} ({item.reviews})</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-            <Ionicons name="thermometer-outline" size={12} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{item.temperature}</Text>
-          </View>
+        <View>
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', marginBottom: 2 }}>{item.name}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>{item.category}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="star" size={12} color="#FFD700" />
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>{item.rating}</Text>
+                </View>
+            </View>
         </View>
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -223,7 +224,7 @@ const CardRow = ({ data, onPress, loading, colors }: any) => {
   }
   return (
     <View style={{ paddingHorizontal: 20 }}>
-      {data.map((item: any, index: number) => (
+      {data.map((item: any) => (
         <DestCard key={item.id || item.name} item={item} onPress={onPress} colors={colors} />
       ))}
     </View>
@@ -236,17 +237,25 @@ const CardRow = ({ data, onPress, loading, colors }: any) => {
 const CityCard = ({ item, onPress, colors }: any) => (
   <TouchableOpacity
     onPress={() => onPress(item.name)}
-    style={{ width: '100%', height: 160, borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}
+    style={{ width: '100%', height: 140, borderRadius: 24, overflow: 'hidden', marginBottom: 16, backgroundColor: colors.card }}
     activeOpacity={0.9}
   >
-    <Image source={{ uri: getDestinationImage(item.name) }} style={StyleSheet.absoluteFill} contentFit="cover" />
-    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.65)']} style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', padding: 12 }]}>
-      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>{item.name}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-        <Ionicons name="star" size={11} color="#FFD700" />
-        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>{item.rating}</Text>
-      </View>
-    </LinearGradient>
+    <SmartImage 
+        gradientOnly={true}
+        name={item.name}
+        category={item.category || 'City'}
+        style={StyleSheet.absoluteFill} 
+    />
+    <View style={{ ...StyleSheet.absoluteFillObject, padding: 16, justifyContent: 'flex-end' }}>
+        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900' }}>{item.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <Ionicons name="star" size={10} color="#FFD700" />
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{item.rating}</Text>
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '600' }}>{item.category}</Text>
+        </View>
+    </View>
   </TouchableOpacity>
 );
 
@@ -326,7 +335,13 @@ export default function HomeScreen() {
   }, []);
 
   const nav   = useCallback((path: string) => router.push(path as any), [router]);
-  const goTo  = useCallback((id: string)   => router.push(`/destination/${encodeURIComponent(id)}` as any), [router]);
+  const goTo = useCallback((id: string) => {
+    if (!id) return;
+    router.push({
+      pathname: "/destination/[id]",
+      params: { id: String(id) }
+    } as any);
+  }, [router]);
 
   const handleTheme = () => {
     toggleTheme();

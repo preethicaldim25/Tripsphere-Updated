@@ -12,10 +12,4 @@ config.resolver.extraNodeModules = {
   'leaflet': path.resolve(__dirname, 'node_modules/leaflet'),
 };
 
-// CRITICAL: Map the @/ path alias to the project root.
-// tsconfig.json paths are TypeScript-only; Metro needs its own resolver config.
-config.resolver.alias = {
-  '@': path.resolve(__dirname),
-};
-
 module.exports = config;

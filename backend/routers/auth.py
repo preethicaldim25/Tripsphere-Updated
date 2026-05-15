@@ -47,11 +47,15 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=TokenResponse)
 async def register(user_data: UserCreate):
-    print(f"📝 Register attempt: {user_data.email}")
+    clean_email = user_data.email.strip().lower()
+    clean_password = user_data.password.strip()
+    clean_name = user_data.name.strip()
+    
+    print(f"📝 Register attempt: '{clean_email}'")
     users_collection = get_collection("users")
     
-    # Check if user exists
-    existing_user = await users_collection.find_one({"email": user_data.email})
+    # Check if user exists (case-insensitive)
+    existing_user = await users_collection.find_one({"email": {"$regex": f"^{clean_email}$", "$options": "i"}})
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -60,9 +64,9 @@ async def register(user_data: UserCreate):
     
     # Create user
     user = {
-        "name": user_data.name,
-        "email": user_data.email,
-        "password": hash_password(user_data.password),  # Hash password
+        "name": clean_name,
+        "email": clean_email,
+        "password": hash_password(clean_password),  # Hash password
         "role": "user",
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()
@@ -91,45 +95,69 @@ async def register(user_data: UserCreate):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(user_data: UserLogin):
-    print(f"🔑 Login attempt: {user_data.email}")
-    users_collection = get_collection("users")
-    
-    # Find user
-    user = await users_collection.find_one({"email": user_data.email})
-    if not user:
-        print(f"❌ User not found: {user_data.email}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-    
-    # Verify password
-    if not verify_password(user_data.password, user["password"]):
-        print(f"❌ Invalid password for: {user_data.email}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-    
-    print(f"✅ Login successful: {user_data.email}")
-    
-    # Create token
-    token = create_access_token({
-        "id": str(user["_id"]),
-        "email": user["email"],
-        "role": user.get("role", "user")
-    })
-    
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": {
+    try:
+        clean_email = user_data.email.strip().lower()
+        clean_password = user_data.password.strip()
+        
+        print(f"🔑 Login attempt: '{clean_email}' (len: {len(clean_email)})")
+        users_collection = get_collection("users")
+        
+        # Find user
+        user = await users_collection.find_one({"email": clean_email})
+        if not user:
+            # Fallback: try case-insensitive search in case old users aren't lowercase
+            user = await users_collection.find_one({"email": {"$regex": f"^{clean_email}$", "$options": "i"}})
+            
+        if not user:
+            print(f"❌ User not found in DB: '{clean_email}'")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        # Verify password
+        print(f"👀 Found user in DB with email: '{user['email']}'. Checking password...")
+        is_valid_pwd = verify_password(clean_password, user.get("password", "")) if user.get("password") else False
+        print(f"🔒 Password verification result: {is_valid_pwd}")
+        
+        if not is_valid_pwd:
+            print(f"❌ Invalid password for: '{clean_email}'")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        print(f"✅ Login successful: {user['email']}")
+        
+        # Create token
+        token = create_access_token({
             "id": str(user["_id"]),
-            "name": user["name"],
             "email": user["email"],
             "role": user.get("role", "user")
+        })
+        
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {
+                "id": str(user["_id"]),
+                "name": user["name"],
+                "email": user["email"],
+                "role": user.get("role", "user")
+            }
         }
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"🔥 CRASH IN LOGIN: {str(e)}")
+        print(f"🔥 TRACE: {error_trace}")
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Backend Error: {str(e)}"
+        )
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(token: str):

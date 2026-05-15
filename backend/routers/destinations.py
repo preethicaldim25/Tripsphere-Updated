@@ -262,14 +262,29 @@ async def get_destination_by_name(name: str):
 @router.get("/{destination_id}")
 async def get_destination(destination_id: str):
     collection = get_collection("destinations")
+    clean_id = destination_id.strip()
     try:
-        dest = await collection.find_one({"_id": ObjectId(destination_id)})
+        dest = await collection.find_one({"_id": ObjectId(clean_id)})
         if dest:
             dest["id"] = str(dest.pop("_id"))
             return dest
     except: pass
-    dest = await collection.find_one({"name": re.compile(f"^{re.escape(destination_id)}$", re.I)})
-    if not dest: raise HTTPException(status_code=404, detail="Destination not found")
+    
+    # Try exact name match or exact slug match (case insensitive, whitespace stripped)
+    dest = await collection.find_one({
+        "$or": [
+            {"name": re.compile(f"^{re.escape(clean_id)}$", re.I)},
+            {"slug": clean_id.lower()}
+        ]
+    })
+    
+    # If not found, try a partial match (e.g. "Tiruchirappalli" vs "Trichy")
+    if not dest:
+        dest = await collection.find_one({"name": re.compile(re.escape(clean_id), re.I)})
+        
+    if not dest: 
+        raise HTTPException(status_code=404, detail="Destination not found")
+    
     dest["id"] = str(dest.pop("_id"))
     return dest
 

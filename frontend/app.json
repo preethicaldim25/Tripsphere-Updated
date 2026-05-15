@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "tripsphere",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -19,9 +19,16 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
       "package": "com.preethi_25.tripsphere",
-      "usesCleartextTraffic": true
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCu0jDMaqZwd-Hx8mvDUPaSHrGSpPL3DjM"
+        }
+      }
     },
     "web": {
       "output": "single",
@@ -41,12 +48,23 @@
           }
         }
       ],
-      "expo-web-browser",
-      "expo-build-properties"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "packagingOptions": {
+              "pickFirst": [
+                "**/libc++_shared.so"
+              ]
+            }
+          }
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "extra": {
       "router": {},

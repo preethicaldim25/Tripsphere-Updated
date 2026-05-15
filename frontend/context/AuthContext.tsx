@@ -36,16 +36,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const loadStoredData = async (): Promise<void> => {
     try {
-      const storedToken = await AsyncStorage.getItem('token');
-      const storedUser = await AsyncStorage.getItem('user');
+      console.log('🔐 AuthContext: Starting to load stored data...');
+      
+      // Add a safety timeout to prevent infinite loading if AsyncStorage hangs
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('AsyncStorage timeout')), 5000)
+      );
 
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+      const dataPromise = (async () => {
+        const storedToken = await AsyncStorage.getItem('token');
+        const storedUser = await AsyncStorage.getItem('user');
+        return { storedToken, storedUser };
+      })();
+
+      const result = await Promise.race([dataPromise, timeoutPromise]) as { storedToken: string | null, storedUser: string | null };
+
+      if (result.storedToken && result.storedUser) {
+        console.log('🔐 AuthContext: Found stored token and user');
+        setToken(result.storedToken);
+        setUser(JSON.parse(result.storedUser));
+      } else {
+        console.log('🔐 AuthContext: No stored session found');
       }
     } catch (error) {
-      console.error('Error loading auth data:', error);
+      console.error('🔐 AuthContext: Error loading auth data:', error);
     } finally {
+      console.log('🔐 AuthContext: Initialization finished, setting isLoading to false');
       setIsLoading(false);
     }
   };

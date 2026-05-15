@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useEffect } from 'react';
 import { View, TouchableOpacity, FlatList, StyleSheet, ListRenderItem, Dimensions } from 'react-native';
-import { Image } from 'expo-image';
+import { SmartImage } from '@/components/ui/SmartImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -16,7 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ThemedText } from '@/components/shared/themedtext';
 import { useTheme } from '@/context/themecontext';
-import { getDestinationImage } from '@/constants/images';
+import { getDestinationImage, CATEGORY_THEMES } from '@/constants/images';
 import { 
   spacing, 
   responsiveFontSize, 
@@ -73,89 +73,58 @@ const FeaturedCard = ({
       Extrapolate.CLAMP
     );
 
-    const opacity = interpolate(
-      scrollX.value,
-      [(index - 1) * cardFullWidth, index * cardFullWidth, (index + 1) * cardFullWidth],
-      [0.8, 1, 0.8],
-      Extrapolate.CLAMP
-    );
-
     return {
       transform: [{ scale }],
-      opacity,
     };
   });
 
-  // Glow effect for featured items
-  const glowOpacity = useSharedValue(0.3);
-  useEffect(() => {
-    glowOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.6, { duration: 1500 }),
-        withTiming(0.3, { duration: 1500 })
-      ),
-      -1,
-      true
-    );
-  }, []);
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glowOpacity.value,
-  }));
+  const themeInfo = CATEGORY_THEMES[item.category?.toLowerCase()] || CATEGORY_THEMES.default;
 
   return (
     <Animated.View style={[styles.cardContainer, animatedStyle]}>
       <TouchableOpacity
-        style={[styles.card, { width: cardWidth, height: cardHeight }]}
+        style={[styles.card, { width: cardWidth, height: cardHeight, backgroundColor: colors.card }]}
         onPress={() => onItemPress(item.id)}
         activeOpacity={0.9}
       >
-        <Image
-          source={{ uri: getDestinationImage(item.name) }}
+        <SmartImage
+          gradientOnly={true}
+          name={item.name}
+          category={item.category}
           style={styles.image}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
         />
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.8)']}
-          style={styles.gradient}
-        >
-          <View style={styles.content}>
-            <View style={styles.badgeContainer}>
-              <View style={styles.categoryBadge}>
-                <ThemedText style={styles.categoryText}>{item.category}</ThemedText>
-              </View>
-              {item.crowd && (
-                <View style={[styles.crowdBadge, { backgroundColor: item.crowd === 'Low' ? '#4CAF50' : item.crowd === 'Medium' ? '#FF9800' : '#F44336' }]}>
-                  <ThemedText style={styles.crowdText}>{item.crowd} Crowd</ThemedText>
-                </View>
-              )}
+        
+        <View style={styles.content}>
+          <View style={styles.topInfo}>
+            <View style={styles.vibeTag}>
+                <ThemedText style={styles.vibeText}>{themeInfo.vibe}</ThemedText>
             </View>
-            <ThemedText style={styles.name}>{item.name}</ThemedText>
-            <View style={styles.metaContainer}>
-              <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={responsiveFontSize(14)} color="#FFD700" />
-                <ThemedText style={styles.ratingText}>
-                  {item.rating} ({item.reviews})
-                </ThemedText>
-              </View>
-              <View style={styles.tempContainer}>
-                <Ionicons name="thermometer-outline" size={responsiveFontSize(14)} color="#fff" />
-                <ThemedText style={styles.tempText}>{item.temperature}</ThemedText>
-              </View>
+            <View style={styles.weatherBadge}>
+                <Ionicons name="sunny-outline" size={12} color="#fff" />
+                <ThemedText style={styles.weatherText}>{item.temperature || '24°C'}</ThemedText>
             </View>
           </View>
-        </LinearGradient>
+
+          <View style={styles.bottomInfo}>
+            <ThemedText style={styles.name} numberOfLines={1}>{item.name}</ThemedText>
+            <View style={styles.districtRow}>
+                <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.7)" />
+                <ThemedText style={styles.districtText}>Tamil Nadu</ThemedText>
+            </View>
+            
+            <View style={styles.metaRow}>
+              <View style={styles.ratingPill}>
+                <Ionicons name="star" size={12} color="#FFD700" />
+                <ThemedText style={styles.ratingValue}>{item.rating}</ThemedText>
+              </View>
+              <ThemedText style={styles.categoryLabel}>{item.category}</ThemedText>
+            </View>
+          </View>
+        </View>
+
+        {/* Subtle glass effect overlay */}
+        <View style={styles.glassOverlay} />
       </TouchableOpacity>
-      {/* Subtle Glow Overlay */}
-      <Animated.View 
-        style={[
-          styles.glowOverlay, 
-          { width: cardWidth, height: cardHeight, shadowColor: colors.primary },
-          glowStyle
-        ]} 
-      />
     </Animated.View>
   );
 };
@@ -266,86 +235,93 @@ const styles = StyleSheet.create({
     height: '100%',
     position: 'absolute',
   },
-  gradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '75%',
-    justifyContent: 'flex-end',
-  },
   content: {
+    flex: 1,
     padding: spacing.lg,
+    justifyContent: 'space-between',
   },
-  badgeContainer: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  categoryBadge: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: responsiveFontSize(10),
-  },
-  categoryText: {
-    color: '#fff',
-    fontSize: responsiveFontSize(10),
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  crowdBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: responsiveFontSize(10),
-  },
-  crowdText: {
-    color: '#fff',
-    fontSize: responsiveFontSize(10),
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  name: {
-    color: '#fff',
-    fontSize: responsiveFontSize(20),
-    fontWeight: '800',
-    marginBottom: spacing.xs,
-  },
-  metaContainer: {
+  topInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  ratingContainer: {
+  vibeTag: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  vibeText: {
+    color: '#fff',
+    fontSize: responsiveFontSize(10),
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  weatherBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
-  ratingText: {
+  weatherText: {
     color: '#fff',
+    fontSize: responsiveFontSize(11),
+    fontWeight: '700',
+  },
+  bottomInfo: {
+    gap: 4,
+  },
+  name: {
+    color: '#fff',
+    fontSize: responsiveFontSize(22),
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  districtRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  districtText: {
+    color: 'rgba(255,255,255,0.7)',
     fontSize: responsiveFontSize(12),
     fontWeight: '600',
   },
-  tempContainer: {
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ratingPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  tempText: {
+  ratingValue: {
     color: '#fff',
     fontSize: responsiveFontSize(12),
-    fontWeight: '600',
+    fontWeight: '800',
   },
-  glowOverlay: {
-    position: 'absolute',
-    borderRadius: responsiveFontSize(24),
-    zIndex: -1,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 5,
+  categoryLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: responsiveFontSize(10),
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
 });
 

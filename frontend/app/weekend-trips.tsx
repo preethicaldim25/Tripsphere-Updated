@@ -12,10 +12,13 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { SmartImage } from '../components/ui/SmartImage';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/themecontext';
 import { getDestinationImage } from '../constants/images';
+import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { AppHeader } from '../components/ui/AppHeader';
 
 const WEEKEND_TRIPS = [
   { id: '1', name: 'Yercaud', distance: '3 hrs', image: 'https://images.unsplash.com/photo-1624886510372-f7311d2c6e6e?q=80&w=1080&auto=format&fit=crop', rating: 4.3, type: 'Hill Station', price: '₹2,500', activities: ['Boating', 'Trekking', 'Coffee Plantations'] },
@@ -80,57 +83,11 @@ export default function WeekendTripsScreen() {
   const styles = getStyles(colors);
 
   return (
-    <>
-      <Stack.Screen options={{
-        title: 'Weekend Getaways',
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.text,
-        headerLeft: () => (
-          <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 10 }}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-        ),
-      }} />
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={colors.card} />
-        {/* Search Bar */}
-        <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Ionicons name="search" size={20} color={colors.textLight} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search destinations..."
-            placeholderTextColor={colors.textLight}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+    <ScreenContainer padded={false}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <AppHeader title="Weekend Getaways" subtitle="Quick trips from your location" />
 
-        {/* Type Filters */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          <View style={styles.filterContainer}>
-            {types.map(type => (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  styles.filterChip,
-                  selectedType === type && [styles.activeChip, { backgroundColor: colors.primary }],
-                  { borderColor: colors.border }
-                ]}
-                onPress={() => setSelectedType(type)}
-              >
-                <Text style={[
-                  styles.filterText,
-                  selectedType === type && { color: '#fff' },
-                  { color: colors.text }
-                ]}>
-                  {type}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
-
-        {/* Results */}
+      {/* Results */}
         {loading ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -141,44 +98,83 @@ export default function WeekendTripsScreen() {
             data={filteredTrips}
             keyExtractor={item => (item.id || item._id || item.name)}
             contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[styles.card, { backgroundColor: colors.card }]}
-                onPress={() => handleDestinationPress(item)}
-                activeOpacity={0.8}
-              >
-                <Image 
-                  source={{ uri: item.image || getDestinationImage(item.name) }} 
-                  style={styles.cardImage} 
-                  resizeMode="cover"
-                />
-                <View style={styles.cardContent}>
-                  <View style={styles.cardHeader}>
-                    <Text style={[styles.cardName, { color: colors.text }]}>{item.name}</Text>
-                    <View style={styles.ratingBadge}>
-                      <Ionicons name="star" size={12} color="#FBBF24" />
-                      <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{item.rating || '4.5'}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.tags}>
-                    <View style={styles.tag}>
-                      <Ionicons name="location-outline" size={12} color={colors.primary} />
-                      <Text style={[styles.tagText, { color: colors.textSecondary }]}>{item.district || 'Tamil Nadu'}</Text>
-                    </View>
-                    <View style={styles.tag}>
-                      <Ionicons name="cash-outline" size={12} color={colors.primary} />
-                      <Text style={[styles.tagText, { color: colors.textSecondary }]}>₹{item.avg_cost_per_person || '2000'}</Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.typeText, { color: colors.primary }]}>{item.category}</Text>
-                  <View style={styles.activities}>
-                    <Text style={[styles.activitiesLabel, { color: colors.textSecondary }]}>Highlights:</Text>
-                    <Text style={[styles.activitiesText, { color: colors.textLight }]} numberOfLines={1}>
-                      {(item.speciality_tags || []).join(' • ') || 'Nature • Peace • Sightseeing'}
-                    </Text>
-                  </View>
+            ListHeaderComponent={
+              <>
+                <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Ionicons name="search" size={20} color={colors.textLight} />
+                  <TextInput
+                    style={[styles.searchInput, { color: colors.text }]}
+                    placeholder="Search destinations..."
+                    placeholderTextColor={colors.textLight}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
                 </View>
-              </TouchableOpacity>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                  <View style={styles.filterContainer}>
+                    {types.map(type => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[
+                          styles.filterChip,
+                          selectedType === type && [styles.activeChip, { backgroundColor: colors.primary }],
+                          { borderColor: colors.border }
+                        ]}
+                        onPress={() => setSelectedType(type)}
+                      >
+                        <Text style={[
+                          styles.filterText,
+                          selectedType === type && { color: '#fff' },
+                          { color: colors.text }
+                        ]}>
+                          {type}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            }
+            renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.card, { backgroundColor: colors.card }]}
+                  onPress={() => handleDestinationPress(item)}
+                  activeOpacity={0.8}
+                >
+                  <SmartImage 
+                    gradientOnly={true}
+                    name={item.name}
+                    category={item.category}
+                    style={styles.cardImage} 
+                  />
+                  <View style={styles.cardContent}>
+                    <View style={styles.cardHeader}>
+                      <Text style={[styles.cardName, { color: colors.text }]}>{item.name}</Text>
+                      <View style={styles.ratingBadge}>
+                        <Ionicons name="star" size={10} color="#FBBF24" />
+                        <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{item.rating || '4.5'}</Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.metaRow}>
+                        <View style={styles.tag}>
+                          <Ionicons name="location-outline" size={12} color={colors.primary} />
+                          <Text style={[styles.tagText, { color: colors.textSecondary }]}>{item.district || 'Tamil Nadu'}</Text>
+                        </View>
+                        <View style={styles.tag}>
+                          <Ionicons name="time-outline" size={12} color={colors.primary} />
+                          <Text style={[styles.tagText, { color: colors.textSecondary }]}>{item.real_time_duration || '3h 30m'}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.highlightsBox}>
+                        <Text style={[styles.activitiesText, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {(item.speciality_tags || []).slice(0,3).join(' • ') || 'Nature • Peace • Sightseeing'}
+                        </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
             )}
             ListEmptyComponent={
               <View style={{ alignItems: 'center', marginTop: 50 }}>
@@ -188,8 +184,7 @@ export default function WeekendTripsScreen() {
             }
           />
         )}
-      </View>
-    </>
+    </ScreenContainer>
   );
 }
 
@@ -236,6 +231,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   listContent: {
     padding: 16,
     paddingTop: 8,
+    paddingBottom: 100, // Safe padding for bottom tabs
   },
   card: {
     borderRadius: 16,
@@ -262,20 +258,26 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   cardName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   ratingText: {
     fontSize: 12,
+    fontWeight: '700',
   },
-  tags: {
+  metaRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 8,
+    gap: 15,
+    marginBottom: 12,
   },
   tag: {
     flexDirection: 'row',
@@ -284,22 +286,15 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   tagText: {
     fontSize: 12,
+    fontWeight: '600',
   },
-  typeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 6,
-  },
-  activities: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  activitiesLabel: {
-    fontSize: 11,
+  highlightsBox: {
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   activitiesText: {
     fontSize: 11,
-    flex: 1,
+    fontWeight: '500',
   },
 });

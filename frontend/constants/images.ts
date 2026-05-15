@@ -33,7 +33,8 @@ export const images = {
   },
 };
 
-export const getCategoryImage = (category: string): string => {
+export const getCategoryImage = (category: string | null | undefined): string => {
+  if (!category) return images.placeholders.travel;
   const cat = category.toLowerCase();
   if (cat.includes('temple')) return images.categories.temple;
   if (cat.includes('hill')) return images.categories.hillStation;
@@ -47,7 +48,7 @@ export const getCategoryImage = (category: string): string => {
 };
 
 export const getDestinationImage = (name: string): string => {
-  if (!name) return images.placeholders.travel;
+  if (!name) return '';
   const n = name.toLowerCase();
 
   // Check for hardcoded images first
@@ -62,16 +63,26 @@ export const getDestinationImage = (name: string): string => {
   if (n.includes('coimbatore')) return images.destinations.coimbatore;
   if (n.includes('mahabalipuram')) return images.destinations.mahabalipuram;
 
-  // Fallback to dynamic service if not hardcoded
-  // Using a more reliable keyword-based service
-  const keyword = n.replace(/\s+/g, ',');
-  return `https://loremflickr.com/800/600/${keyword},travel`;
+  // We no longer use loremflickr as it looks unprofessional
+  // Return empty string; the SmartImage component will handle the fallback UI
+  return '';
 };
 
 export const getDynamicPlaceImage = (name: string, keywords?: string): string => {
-  if (!name && !keywords) return images.placeholders.travel;
-  const searchKeywords = keywords || (name ? name.toLowerCase().replace(/\s+/g, ',') : 'travel');
-  return `https://loremflickr.com/800/600/${searchKeywords},travel`;
+  // We avoid random fallbacks now
+  return '';
+};
+
+export const CATEGORY_THEMES: Record<string, { colors: [string, string], icon: string, vibe: string }> = {
+  'hill station': { colors: ['#059669', '#0284C7'], icon: 'terrain', vibe: 'Peaceful' },
+  'beach': { colors: ['#0891B2', '#22D3EE'], icon: 'waves', vibe: 'Relaxing' },
+  'temple': { colors: ['#B45309', '#F59E0B'], icon: 'home-variant', vibe: 'Spiritual' },
+  'heritage': { colors: ['#7C3AED', '#8B5CF6'], icon: 'bank', vibe: 'Historic' },
+  'nature': { colors: ['#047857', '#10B981'], icon: 'leaf', vibe: 'Refreshing' },
+  'city': { colors: ['#4338CA', '#6366F1'], icon: 'city-variant', vibe: 'Vibrant' },
+  'waterfall': { colors: ['#1D4ED8', '#60A5FA'], icon: 'water', vibe: 'Pure' },
+  'wildlife': { colors: ['#92400E', '#D97706'], icon: 'elephant', vibe: 'Wild' },
+  'default': { colors: ['#1E293B', '#334155'], icon: 'map-marker', vibe: 'Adventure' }
 };
 
 

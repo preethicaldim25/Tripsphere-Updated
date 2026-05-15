@@ -8,23 +8,22 @@ import {
   Image,
   Alert,
   Linking,
-  Share,
   ActivityIndicator,
   Dimensions,
   Platform,
-  FlatList,
+  StatusBar,
 } from 'react-native';
 import { getDestinationImage } from '../../constants/images';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/themecontext';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { destinationsAPI, Destination } from '../../services/api';
-import AddToTripModal from '../../components/AddToTripModal';
 import ExploreMap from '../../components/ExploreMap';
+import { SmartImage } from '../../components/ui/SmartImage';
 
 const { width } = Dimensions.get('window');
 
@@ -35,29 +34,18 @@ export default function DestinationDetailsScreen() {
   const { colors, theme } = useTheme();
   
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState('about');
-  const [showFullDescription, setShowFullDescription] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [loadingSave, setLoadingSave] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [destination, setDestination] = useState<Destination | null>(null);
+  const [fetching, setFetching] = useState(true);
 
   const destinationId = typeof id === 'string' ? id : String(id);
   const destinationName = typeof nameParam === 'string' ? nameParam : String(nameParam);
-  
-  const [destination, setDestination] = useState<Destination | null>(null);
-  const [fetching, setFetching] = useState(true);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
-    console.log("📍 destinationId:", destinationId);
-    console.log("📍 destinationName:", destinationName);
-
     if ((!destinationId || destinationId === "undefined" || destinationId === "[id]") && (!destinationName || destinationName === "undefined")) {
-      console.error("❌ Invalid destinationId and destinationName");
       setFetching(false);
       return;
     }
-
     fetchDestinationDetails();
   }, [destinationId, destinationName]);
 
@@ -66,10 +54,8 @@ export default function DestinationDetailsScreen() {
       setFetching(true);
       let targetId = destinationId;
 
-      // 4. FALLBACK NAME MATCH (IMPORTANT)
-      // If destinationId is missing or looks like a name, try to find the real ID
-      if (!targetId || targetId === "undefined" || targetId === "[id]" || targetId.length < 10) {
-        console.log("🔍 ID missing or invalid, attempting name-based fallback for:", destinationName);
+      // Fallback name match if ID is invalid
+      if (!targetId || targetId === "undefined" || targetId === "[id]" || targetId.length < 5) {
         try {
           const allResponse = await destinationsAPI.getAll();
           const destinations = allResponse.destinations || [];
@@ -77,7 +63,6 @@ export default function DestinationDetailsScreen() {
             d => d.name.toLowerCase() === (destinationName || destinationId).toLowerCase()
           );
           if (match) {
-            console.log("✅ Found match by name:", match.name, "ID:", match.id || match._id);
             targetId = (match.id || match._id) as string;
           }
         } catch (err) {
@@ -86,23 +71,17 @@ export default function DestinationDetailsScreen() {
       }
 
       if (!targetId || targetId === "undefined" || targetId === "[id]") {
-        // Last resort: try using the name itself if it's all we have
         targetId = destinationName || destinationId;
       }
 
-      console.log("📡 Fetching destination details for:", targetId);
       const data = await destinationsAPI.getPlace(targetId);
       if (data) {
         setDestination({
             ...data,
             id: data.id || data._id,
-            highlights: data.highlights || [],
-            nearby: data.nearby || [],
-            weather: data.weather || {
-                summer: '25-35°C', winter: '20-30°C', monsoon: '22-32°C', current: '28°C', condition: 'Sunny'
-            },
-            cuisine: data.cuisine || [],
-            tips: data.tips || []
+            attractions: data.attractions || [],
+            nearby_places: data.nearby_places || data.nearby || [],
+            food: data.food || [],
         } as Destination);
       }
     } catch (error) {
@@ -146,9 +125,11 @@ export default function DestinationDetailsScreen() {
   };
 
   const handleSave = async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+        router.push('/auth/login');
+        return;
+    }
     if (!destination) return;
-    setLoadingSave(true);
     try {
       const savedKey = `saved_${user?.id}`;
       const existingSaved = await AsyncStorage.getItem(savedKey);
@@ -162,370 +143,618 @@ export default function DestinationDetailsScreen() {
       setSaved(!saved);
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoadingSave(false);
     }
   };
-
-  const handleAddToDraft = async () => {
-    if (!destination) return;
-    try {
-      const existing = await AsyncStorage.getItem('draft_trip_places');
-      let places = existing ? JSON.parse(existing) : [];
-      if (!places.find((p: any) => p.name === destination.name)) {
-        places.push({ id: destination.id || destination._id, name: destination.name, district: destination.district || destination.location, image: destination.image, type: destination.category, rating: destination.rating });
-        await AsyncStorage.setItem('draft_trip_places', JSON.stringify(places));
-      }
-      
-      if (Platform.OS === 'web') {
-          window.alert(`${destination.name} has been added to your draft trip!`);
-          router.push('/your-trip');
-      } else {
-          Alert.alert(
-              "Added to Trip \u2705",
-              `${destination.name} has been added to your draft trip.`,
-              [
-                  { text: "Continue Exploring", style: "cancel" },
-                  { text: "Plan My Trip", onPress: () => router.push('/your-trip') }
-              ]
-          );
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const styles = getStyles(colors);
 
   if (fetching) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ marginTop: 15, color: colors.textSecondary }}>Opening hidden gem...</Text>
+        <Text style={{ marginTop: 15, color: colors.primary, fontWeight: 'bold' }}>Syncing Experience...</Text>
       </View>
     );
   }
 
   if (!destination) {
     return (
-      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
-        <Ionicons name="sad-outline" size={60} color="#ccc" />
-        <Text style={[styles.errorTitle, { color: colors.text }]}>Destination Not Found</Text>
-        <Text style={{ color: colors.textSecondary }}>We couldn't find details for "{destinationName || destinationId}"</Text>
-        <TouchableOpacity style={styles.errorButton} onPress={() => router.back()}>
-          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Go Back</Text>
+      <View style={[styles.centered, { backgroundColor: colors.background, padding: 40 }]}>
+        <Ionicons name="sad-outline" size={64} color={colors.textLight} />
+        <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20 }]}>Destination Not Found</Text>
+        <TouchableOpacity style={[styles.addTripBtn, { paddingHorizontal: 30, marginTop: 20, borderColor: colors.primary }]} onPress={() => router.back()}>
+          <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  const displayName = destination.name;
+  const displayImage = destination.image || getDestinationImage(displayName);
+
+  const mapPlaces = (destination.attractions || []).map((attr, idx) => ({
+    id: `attr-${idx}`,
+    name: attr.name || 'Attraction',
+    lat: Number(attr.lat),
+    lng: Number(attr.lng),
+    category: attr.type || 'Point of Interest',
+    image: attr.image || ''
+  })).filter(p => !isNaN(p.lat) && !isNaN(p.lng));
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" />
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
-      >
-        {/* Hero Section */}
-        <View style={styles.imageContainer}>
-          {destination && destination.carousel_images && destination.carousel_images.length > 0 ? (
-            <View style={{ flex: 1 }}>
-              <FlatList
-                data={destination.carousel_images}
-                renderItem={({ item, index }: { item: string, index: number }) => (
-                  <Image 
-                    source={{ uri: index === 0 ? getDestinationImage(destination!.name) : item }} 
-                    style={styles.image} 
-                    resizeMode="cover"
-                  />
-                )}
-                keyExtractor={(item, index) => index.toString()}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(event) => {
-                  const index = Math.round(event.nativeEvent.contentOffset.x / width);
-                  setActiveImageIndex(index);
-                }}
-              />
-              <View style={styles.pagination}>
-                {(destination!.carousel_images ?? []).map((_: any, index: number) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.dot,
-                      { backgroundColor: activeImageIndex === index ? '#fff' : 'rgba(255,255,255,0.4)' }
-                    ]}
-                  />
-                ))}
-              </View>
-            </View>
-          ) : (
-            <Image source={{ uri: getDestinationImage(destination.name) }} style={styles.image} resizeMode="cover" />
-          )}
-          <LinearGradient colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.85)']} style={styles.imageGradient} />
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      
+      <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+        {/* HERO SECTION */}
+        <View style={styles.heroSection}>
+          <SmartImage 
+            gradientOnly={true}
+            name={displayName}
+            category={destination.category}
+            style={StyleSheet.absoluteFillObject as any}
+          />
+          <LinearGradient 
+            colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.9)']} 
+            style={styles.heroGradient} 
+          />
+          
+          <TouchableOpacity style={styles.backButtonCircle} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          
+          <TouchableOpacity style={styles.saveButtonCircle} onPress={handleSave}>
             <Ionicons name={saved ? 'heart' : 'heart-outline'} size={24} color={saved ? '#FF4B4B' : '#fff'} />
           </TouchableOpacity>
-          <View style={styles.imageOverlay}>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{destination.category}</Text>
+
+          <View style={styles.heroContent}>
+            <View style={styles.heroHeaderRow}>
+                <View style={[styles.categoryBadge, { backgroundColor: colors.primary + 'D0' }]}>
+                  <Text style={styles.categoryText}>{destination.category}</Text>
+                </View>
+                {(destination.is_featured || (destination as any).is_ai_recommended) && (
+                    <View style={styles.aiBadge}>
+                        <MaterialCommunityIcons name="creation" size={12} color="#fff" />
+                        <Text style={styles.aiBadgeText}>AI PICK</Text>
+                    </View>
+                )}
             </View>
-            <Text style={styles.imageName}>{destination.name}</Text>
-            <View style={styles.specialityContainer}>
-              {destination.speciality_tags?.map((tag, index) => (
-                <View key={index} style={styles.specialityTag}>
-                  <Text style={styles.specialityTagText}>{tag}</Text>
+            
+            <Text style={styles.heroTitle}>{displayName}</Text>
+            
+            <View style={styles.districtRowHero}>
+                <Ionicons name="location-outline" size={16} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.districtTextHero}>{destination.district || 'Tamil Nadu'}</Text>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsRow}>
+              {(destination.speciality_tags || ['City', 'Nature', 'Heritage']).map((tag, idx) => (
+                <View key={idx} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
                 </View>
               ))}
-            </View>
+            </ScrollView>
           </View>
         </View>
 
-        <View style={styles.content}>
-           {/* Quick Stats Row */}
-           <View style={styles.quickStats}>
-                <View style={styles.stat}>
-                    <Ionicons name="star" size={16} color="#FBBF24" />
-                    <Text style={[styles.statValue, { color: colors.text }]}>{destination.rating}</Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rating</Text>
+        {/* CONTENT BODY */}
+        <View style={[styles.contentBody, { backgroundColor: colors.background }]}>
+          {/* Stats Row */}
+          <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.statItem}>
+              <Ionicons name="star" size={20} color="#FBBF24" />
+              <Text style={[styles.statValue, { color: colors.text }]}>{destination.rating}</Text>
+              <Text style={styles.statLabel}>Rating</Text>
+            </View>
+            <View style={styles.statItem}>
+              <MaterialCommunityIcons name="wallet-outline" size={20} color={colors.primary} />
+              <Text style={[styles.statValue, { color: colors.text }]}>₹{destination.estimated_budget || destination.avg_cost_per_person || '5000'}</Text>
+              <Text style={styles.statLabel}>Budget</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons name="time-outline" size={20} color={colors.primary} />
+              <Text style={[styles.statValue, { color: colors.text }]}>{destination.timeRequired || '2 Days'}</Text>
+              <Text style={styles.statLabel}>Duration</Text>
+            </View>
+          </View>
+
+          {/* AI Insights Card */}
+          {destination.ai_recommendations && (
+            <View style={[styles.aiCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}>
+                <View style={styles.aiHeader}>
+                <MaterialCommunityIcons name="creation" size={24} color={colors.primary} />
+                <Text style={[styles.aiTitle, { color: colors.primary }]}>AI Insights</Text>
                 </View>
-                <View style={styles.stat}>
-                    <Ionicons name="wallet" size={16} color="#6B4EFF" />
-                    <Text style={[styles.statValue, { color: colors.text }]}>₹{destination.estimated_budget}</Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Budget</Text>
+                
+                <View style={styles.aiRow}>
+                <Text style={[styles.aiLabel, { color: colors.text }]}>Best Time:</Text>
+                <Text style={[styles.aiValue, { color: colors.textSecondary }]}>{destination.ai_recommendations.best_time}</Text>
                 </View>
-                <View style={styles.stat}>
-                    <Ionicons name="time" size={16} color="#6B4EFF" />
-                    <Text style={[styles.statValue, { color: colors.text }]}>{destination.timeRequired || '2 Days'}</Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Duration</Text>
+                <View style={styles.aiRow}>
+                <Text style={[styles.aiLabel, { color: colors.text }]}>Crowd Tip:</Text>
+                <Text style={[styles.aiValue, { color: colors.textSecondary }]}>{destination.ai_recommendations.crowd_tips}</Text>
                 </View>
-           </View>
+                <View style={styles.aiRow}>
+                <Text style={[styles.aiLabel, { color: colors.text }]}>Hidden Tip:</Text>
+                <Text style={[styles.aiValue, { color: colors.textSecondary }]}>{destination.ai_recommendations.hidden_tip}</Text>
+                </View>
+            </View>
+          )}
 
-           {/* AI Recommendations Section */}
-           {destination.ai_recommendations && (
-             <View style={[styles.aiSection, { backgroundColor: theme === 'dark' ? '#1E1E1E' : '#F5F3FF' }]}>
-               <View style={styles.aiHeader}>
-                 <Ionicons name="sparkles" size={20} color="#6B4EFF" />
-                 <Text style={[styles.aiTitle, { color: '#6B4EFF' }]}>AI Insights</Text>
-               </View>
-               <View style={styles.aiContent}>
-                 <View style={styles.aiRow}>
-                   <Text style={[styles.aiLabel, { color: colors.text }]}>Best Time:</Text>
-                   <Text style={[styles.aiValue, { color: colors.textSecondary }]}>{destination.ai_recommendations.best_time}</Text>
-                 </View>
-                 <View style={styles.aiRow}>
-                   <Text style={[styles.aiLabel, { color: colors.text }]}>Crowd Tip:</Text>
-                   <Text style={[styles.aiValue, { color: colors.textSecondary }]}>{destination.ai_recommendations.crowd_tips}</Text>
-                 </View>
-                 <View style={styles.aiRow}>
-                   <Text style={[styles.aiLabel, { color: colors.text }]}>Hidden Tip:</Text>
-                   <Text style={[styles.aiValue, { color: colors.textSecondary }]}>{destination.ai_recommendations.hidden_tip}</Text>
-                 </View>
-               </View>
-             </View>
-           )}
+          {/* About Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>About</Text>
+            <Text style={[styles.description, { color: colors.textSecondary }]}>
+              {destination.longDescription || destination.description || 'Discover the unique charm and vibrant culture of this must-visit destination.'}
+            </Text>
+          </View>
 
-           {/* Description */}
-           <Text style={[styles.sectionTitle, { color: colors.text }]}>About</Text>
-           <Text style={[styles.description, { color: colors.textSecondary }]}>
-             {destination.longDescription || destination.description}
-           </Text>
+          {/* Key Attractions Map */}
+          {destination.attractions && destination.attractions.length > 0 && (
+            <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Key Attractions</Text>
+                <TouchableOpacity onPress={() => router.push('/map')}>
+                    <Text style={[styles.viewMapText, { color: colors.primary }]}>View Full Map</Text>
+                </TouchableOpacity>
+                </View>
+                
+                <View style={[styles.mapPreview, { borderColor: colors.border }]}>
+                <ExploreMap 
+                    places={mapPlaces}
+                    theme={theme as any}
+                />
+                </View>
 
-           {/* Key Attractions Map */}
-           <View style={styles.section}>
-             <View style={styles.sectionHeader}>
-               <Text style={[styles.sectionTitle, { color: colors.text }]}>Key Attractions</Text>
-               <TouchableOpacity onPress={() => router.push('/map')}>
-                 <Text style={{ color: colors.primary, fontWeight: 'bold' }}>View Full Map</Text>
-               </TouchableOpacity>
-             </View>
-             
-             {destination.attractions && destination.attractions.length > 0 && (
-               <View style={styles.miniMapContainer}>
-                 <ExploreMap 
-                   places={destination.attractions.map(a => ({
-                     ...a,
-                     coordinates: { lat: a.lat, lng: a.lng },
-                     id: a.name
-                   }))}
-                   center={[destination.coordinates?.lat || 11, destination.coordinates?.lng || 78]}
-                   zoom={12}
-                   theme={theme}
-                 />
-               </View>
-             )}
-
-             <View style={styles.verticalList}>
-               {destination.attractions?.map((attr, index) => (
-                 <View key={index} style={[styles.attrCard, { backgroundColor: colors.card }]}>
-                   {attr.image ? (
-                     <Image source={{ uri: attr.image }} style={styles.attrImage} />
-                   ) : (
-                     <View style={styles.attrIconBg}>
-                       <Ionicons 
-                          name={attr.type === 'Temple' ? 'home' : attr.type === 'Waterfall' ? 'water' : 'camera'} 
-                          size={20} 
-                          color="#6B4EFF" 
+                <View style={styles.attractionsList}>
+                {destination.attractions.map((attr, idx) => (
+                    <View key={idx} style={[styles.attractionItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={[styles.attractionIconContainer, { backgroundColor: colors.primary + '20' }]}>
+                        <Ionicons 
+                        name={attr.type?.toLowerCase().includes('beach') ? 'umbrella-outline' : attr.type?.toLowerCase().includes('temple') ? 'home-outline' : 'camera-outline'} 
+                        size={20} 
+                        color={colors.primary} 
                         />
-                     </View>
-                   )}
-                   <View style={styles.attrContent}>
-                     <Text style={[styles.attrName, { color: colors.text }]} numberOfLines={1}>{attr.name}</Text>
-                     <Text style={[styles.attrType, { color: colors.textSecondary }]}>{attr.type}</Text>
-                   </View>
-                 </View>
-               ))}
-             </View>
-           </View>
+                    </View>
+                    <View style={styles.attractionInfo}>
+                        <Text style={[styles.attractionName, { color: colors.text }]}>{attr.name}</Text>
+                        <Text style={[styles.attractionType, { color: colors.textLight }]}>{attr.type}</Text>
+                    </View>
+                    </View>
+                ))}
+                </View>
+            </View>
+          )}
 
-           {/* Food Recommendations */}
-           <View style={styles.section}>
-             <Text style={[styles.sectionTitle, { color: colors.text }]}>Where to Eat</Text>
-             {destination.food?.map((item, index) => (
-               <View key={index} style={[styles.foodCard, { backgroundColor: colors.card }]}>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                   {item.image && (
-                     <Image source={{ uri: item.image }} style={styles.foodImage} />
-                   )}
-                   <View style={{ marginLeft: item.image ? 12 : 0, flex: 1 }}>
-                     <Text style={[styles.foodName, { color: colors.text }]}>{item.name}</Text>
-                     <Text style={[styles.foodCuisine, { color: colors.textSecondary }]}>{item.cuisine}</Text>
-                   </View>
-                 </View>
-                 <View style={styles.foodRating}>
-                   <Ionicons name="star" size={14} color="#FBBF24" />
-                   <Text style={[styles.foodRatingText, { color: colors.text }]}>{item.rating}</Text>
-                 </View>
-               </View>
-             ))}
-           </View>
+          {/* Where to Eat */}
+          {destination.food && destination.food.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Where to Eat</Text>
+              {destination.food.map((restaurant, idx) => (
+                <View key={idx} style={[styles.eatCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.eatInfo}>
+                    <Text style={[styles.eatName, { color: colors.text }]}>{restaurant.name}</Text>
+                    <Text style={[styles.eatCuisine, { color: colors.textLight }]}>{restaurant.cuisine}</Text>
+                  </View>
+                  <View style={styles.eatRating}>
+                    <Ionicons name="star" size={14} color="#FBBF24" />
+                    <Text style={styles.eatRatingText}>{restaurant.rating}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
 
-           {/* Hotel Booking Integration */}
-           <View style={styles.section}>
-             <Text style={[styles.sectionTitle, { color: colors.text }]}>Stay & Accommodation</Text>
-             <TouchableOpacity 
-                style={[styles.bookingCard, { backgroundColor: '#6B4EFF' }]}
-                onPress={() => Linking.openURL(`https://www.booking.com/searchresults.html?ss=${destination.name}`)}
-             >
-               <View>
-                 <Text style={styles.bookingTitle}>Find the best stays</Text>
-                 <Text style={styles.bookingSubtitle}>Check availability on Booking.com</Text>
-               </View>
-               <Ionicons name="chevron-forward" size={24} color="#fff" />
-             </TouchableOpacity>
-           </View>
+          {/* Stay & Accommodation */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Stay & Accommodation</Text>
+            <TouchableOpacity 
+              style={styles.stayCard}
+              onPress={() => Linking.openURL(`https://www.booking.com/searchresults.html?ss=${displayName}`)}
+            >
+              <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.stayGradient}>
+                <View style={styles.stayContent}>
+                  <Text style={styles.stayTitle}>Find the best stays</Text>
+                  <Text style={styles.staySubtitle}>Check availability on Booking.com</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
 
-           {/* Nearby Places */}
-           <View style={styles.section}>
-             <Text style={[styles.sectionTitle, { color: colors.text }]}>Nearby Places</Text>
-             <View style={styles.nearbyList}>
-               {destination.nearby_places?.map((place, index) => (
-                 <View key={index} style={styles.nearbyItem}>
-                   <Ionicons name="location-outline" size={16} color={colors.textSecondary} />
-                   <Text style={[styles.nearbyName, { color: colors.text }]}>{place.name}</Text>
-                   <Text style={[styles.nearbyDist, { color: colors.textSecondary }]}>{place.distance}</Text>
-                 </View>
-               ))}
-             </View>
-           </View>
+          {/* Nearby Places */}
+          {destination.nearby_places && destination.nearby_places.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Nearby Places</Text>
+              {destination.nearby_places.map((place: any, idx: number) => (
+                <View key={idx} style={[styles.nearbyItem, { backgroundColor: colors.card }]}>
+                  <View style={styles.nearbyLeft}>
+                    <Ionicons name="location-outline" size={18} color={colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={[styles.nearbyName, { color: colors.text }]}>{place.name}</Text>
+                  </View>
+                  <Text style={[styles.nearbyDist, { color: colors.primary }]}>{place.distance}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
-           <View style={styles.actionRow}>
-                <TouchableOpacity 
-                    style={[styles.planBtn, { backgroundColor: '#6B4EFF', flex: 1 }]}
-                    onPress={() => router.push({ pathname: '/plan-trip', params: { destination: destination.name }} as any)}
-                >
-                    <Text style={styles.planBtnText}>✨ Generate AI Itinerary</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                    style={[styles.planBtn, { backgroundColor: colors.card, borderWidth: 2, borderColor: '#6B4EFF', flex: 1, marginLeft: 10 }]}
-                    onPress={handleAddToDraft}
-                >
-                    <Text style={[styles.planBtnText, { color: '#6B4EFF' }]}>+ Add to Trip</Text>
-                </TouchableOpacity>
-           </View>
-
-           <AddToTripModal 
-                visible={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                destination={destination}
-           />
-           <View style={{ height: 40 }} />
+          {/* Bottom Actions */}
+          <View style={styles.bottomActions}>
+            <TouchableOpacity 
+              style={styles.aiItineraryBtn}
+              onPress={() => router.push({ pathname: '/plan-trip', params: { destination: displayName } } as any)}
+            >
+              <LinearGradient colors={[colors.primary, '#6D28D9']} style={styles.actionGrad}>
+                <MaterialCommunityIcons name="creation" size={20} color="#fff" />
+                <Text style={styles.actionBtnText}>Generate AI Itinerary</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.addTripBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
+              onPress={() => router.push({ pathname: '/your-trip' } as any)}
+            >
+              <Text style={[styles.addTripText, { color: colors.text }]}>+ Add to Trip</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
-  errorTitle: { fontSize: 24, fontWeight: 'bold', marginVertical: 10 },
-  errorButton: { backgroundColor: '#6B4EFF', minHeight: 44, paddingHorizontal: 30, justifyContent: 'center', alignItems: 'center', borderRadius: 15, marginTop: 20 },
-  imageContainer: { height: Math.min(Math.round(width * 0.65), 320), width: '100%' },
-  image: { width: '100%', height: '100%' },
-  imageGradient: { ...StyleSheet.absoluteFillObject },
-  backButton: { position: 'absolute', top: 50, left: 20, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 15 },
-  saveButton: { position: 'absolute', top: 50, right: 20, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 15 },
-  pagination: { flexDirection: 'row', position: 'absolute', bottom: 45, width: '100%', justifyContent: 'center', gap: 6, zIndex: 10 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  imageOverlay: { position: 'absolute', bottom: 40, left: 20, right: 20 },
-  imageName: { color: '#fff', fontSize: Platform.OS === 'web' ? 36 : 26, fontWeight: '900', letterSpacing: -0.5 },
-  categoryBadge: { backgroundColor: 'rgba(107,78,255,0.8)', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginBottom: 12 },
-  categoryBadgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  specialityContainer: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  specialityTag: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  specialityTagText: { color: '#fff', fontSize: 11, fontWeight: '600' },
-  content: { padding: 18, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24, backgroundColor: colors.background },
-  section: { marginBottom: 32 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  sectionTitle: { fontSize: 22, fontWeight: '800', marginBottom: 16 },
-  description: { fontSize: 16, lineHeight: 26, marginBottom: 10 },
-  quickStats: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32, backgroundColor: 'rgba(107,78,255,0.05)', padding: 20, borderRadius: 24 },
-  stat: { alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 16, fontWeight: 'bold' },
-  statLabel: { fontSize: 11, fontWeight: '500' },
-  aiSection: { padding: 20, borderRadius: 24, marginBottom: 32 },
-  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 15 },
-  aiTitle: { fontSize: 18, fontWeight: '800' },
-  aiContent: { gap: 12 },
-  aiRow: { flexDirection: 'row', gap: 8 },
-  aiLabel: { fontWeight: '700', fontSize: 14, width: 90 },
-  aiValue: { flex: 1, fontSize: 14, lineHeight: 20 },
-  horizontalScroll: { marginHorizontal: -25, paddingHorizontal: 25 },
-  verticalList: { marginTop: 10 },
-  miniMapContainer: {
-    height: 180,
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+  },
+  backButtonCircle: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  saveButtonCircle: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  heroSection: {
+    height: 480,
+  },
+  heroGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroContent: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
+  },
+  categoryBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  categoryText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  heroTitle: {
+    fontSize: 44,
+    fontWeight: '900',
+    color: '#fff',
+    marginBottom: 8,
+    letterSpacing: -1,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  districtRowHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 20,
+    opacity: 0.9,
+  },
+  districtTextHero: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  heroHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 5,
+  },
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+    marginBottom: 12,
+  },
+  aiBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+  },
+  tag: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  tagText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  contentBody: {
+    padding: 20,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    marginTop: -30,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderRadius: 24,
+    marginBottom: 32,
+    borderWidth: 1,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 8,
+  },
+  statLabel: {
+    color: '#777',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
+  aiCard: {
+    padding: 24,
+    borderRadius: 28,
+    marginBottom: 32,
+    borderWidth: 1,
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  aiTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  aiRow: {
+    marginBottom: 16,
+  },
+  aiLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  aiValue: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  section: {
+    marginBottom: 40,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  viewMapText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  description: {
+    fontSize: 16,
+    lineHeight: 28,
+  },
+  mapPreview: {
+    height: 220,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 20,
+    borderWidth: 1,
+  },
+  attractionsList: {
+    gap: 14,
+  },
+  attractionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  attractionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  attractionInfo: {
+    flex: 1,
+  },
+  attractionName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  attractionType: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  eatCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 18,
+    borderRadius: 20,
+    marginBottom: 14,
+    borderWidth: 1,
+  },
+  eatInfo: {
+    flex: 1,
+  },
+  eatName: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  eatCuisine: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  eatRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 6,
+  },
+  eatRatingText: {
+    color: '#FBBF24',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  stayCard: {
+    marginBottom: 40,
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  stayGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 28,
+    justifyContent: 'space-between',
+  },
+  stayContent: {
+    flex: 1,
+  },
+  stayTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  staySubtitle: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    marginTop: 6,
+  },
+  nearbyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 16,
+  },
+  nearbyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nearbyName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  nearbyDist: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  bottomActions: {
+    flexDirection: 'row',
+    gap: 14,
+    marginTop: 10,
+    marginBottom: 30,
+  },
+  aiItineraryBtn: {
+    flex: 1.4,
     borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    elevation: 8,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
-  attrCard: { flexDirection: 'row', alignItems: 'center', width: '100%', padding: 12, borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
-  attrImage: { width: 60, height: 60, borderRadius: 12, marginRight: 12 },
-  attrIconBg: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(107,78,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  attrContent: { flex: 1 },
-  attrName: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
-  attrType: { fontSize: 13 },
-  foodCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 20, marginBottom: 12 },
-  foodImage: { width: 50, height: 50, borderRadius: 12 },
-  foodName: { fontSize: 16, fontWeight: '700' },
-  foodCuisine: { fontSize: 13 },
-  foodRating: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(251,191,36,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  foodRatingText: { fontSize: 12, fontWeight: 'bold' },
-  bookingCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderRadius: 24 },
-  bookingTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 2 },
-  bookingSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 12 },
-  nearbyList: { gap: 12 },
-  nearbyItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  nearbyName: { flex: 1, fontSize: 15, fontWeight: '500' },
-  nearbyDist: { fontSize: 14 },
-  actionRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
-  planBtn: { height: 60, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 4 },
-  planBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  actionGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 10,
+  },
+  actionBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  addTripBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addTripText: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
 });

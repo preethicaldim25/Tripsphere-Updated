@@ -29,7 +29,7 @@ export const destinationService = {
   /* Get destination by ID */
   getById: async (id: string): Promise<Destination | null> => {
     try {
-      const response = await destinationsAPI.getById(id);
+      const response = await destinationsAPI.getPlace(id);
       return response;
     } catch (error) {
       console.error(`Error fetching destination ${id}:`, error);

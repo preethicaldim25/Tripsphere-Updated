@@ -9,9 +9,10 @@ export default function Index() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
         <ActivityIndicator size="large" color="#6B4EFF" />
-        <Text style={{ marginTop: 10 }}>Loading...</Text>
+        <Text style={{ marginTop: 15, color: '#fff', fontWeight: 'bold' }}>Syncing Experience...</Text>
+        <Text style={{ marginTop: 8, color: '#666', fontSize: 12 }}>Please wait a moment</Text>
       </View>
     );
   }

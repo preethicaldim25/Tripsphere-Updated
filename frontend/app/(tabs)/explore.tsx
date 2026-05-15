@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   TextInput,
   ActivityIndicator,
   ScrollView,
@@ -13,13 +12,15 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/themecontext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { destinationsAPI, authAPI, Destination } from '../../services/api';
 import ExploreMap from '../../components/ExploreMap';
-import { images, getDestinationImage } from '../../constants/images';
+import { images, getDestinationImage, CATEGORY_THEMES } from '../../constants/images';
+import { SmartImage } from '../../components/ui/SmartImage';
 
 const { width, height } = Dimensions.get('window');
 // Cap map height: never more than 250px on mobile, 380px on web
@@ -35,7 +36,7 @@ const FALLBACK_PLACES: any[] = [
 export default function ExploreScreen() {
   const router = useRouter();
   const { colors, theme } = useTheme();
-  
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,7 +45,7 @@ export default function ExploreScreen() {
   const [exploreMode, setExploreMode] = useState('AI'); // AI, Peace, Budget, Nature
   const [selectedPinPlace, setSelectedPinPlace] = useState<any>(null);
   const [savedPlaces, setSavedPlaces] = useState<string[]>([]);
-  
+
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const fetchData = async () => {
@@ -53,7 +54,7 @@ export default function ExploreScreen() {
       const data = await destinationsAPI.getExploreData();
       console.log("🌍 Destinations API response (ExploreData):", data);
       setExploreData(data);
-      
+
       try {
         const saved = await authAPI.getSavedPlaces();
         setSavedPlaces(saved.map((p: any) => p.id || p._id));
@@ -78,16 +79,17 @@ export default function ExploreScreen() {
   };
 
   const handlePlaceNavigation = (place: any) => {
-    console.log('Navigating to place:', place);
-    const targetId = place.id || place._id;
-    
-    if (place.isFallback) {
-        // Fallback uses names that match local DESTINATIONS map keys
-        router.push(`/destination/${targetId}` as any);
-    } else {
-        // Real backend IDs
-        router.push(`/destination/${targetId}` as any);
+    const targetId = place?.id || place?._id || place?.name;
+
+    if (!targetId) {
+      console.error("[Tripsphere] Navigation failed: No target ID", place);
+      return;
     }
+
+    router.push({
+      pathname: "/destination/[id]",
+      params: { id: String(targetId), name: place?.name }
+    } as any);
   };
 
   const toggleSave = async (placeId: string) => {
@@ -119,11 +121,13 @@ export default function ExploreScreen() {
   };
 
   const renderPlaceCard = ({ item, type = 'normal' }: { item: any, type?: 'large' | 'normal' | 'horizontal' }) => {
-    const isSaved = savedPlaces.includes(item.id || item._id);
-    
+    if (!item) return null;
+    const isSaved = (savedPlaces || []).includes(item?.id || item?._id);
+    const themeInfo = CATEGORY_THEMES[item.category?.toLowerCase()] || CATEGORY_THEMES.default;
+
     return (
       <TouchableOpacity
-        key={item.id || item._id}
+        key={item?.id || item?._id || Math.random().toString()}
         style={[
           styles.card,
           type === 'large' ? styles.largeCard : type === 'horizontal' ? styles.horizontalCard : styles.normalCard,
@@ -132,34 +136,46 @@ export default function ExploreScreen() {
         onPress={() => handlePlaceNavigation(item)}
         activeOpacity={0.9}
       >
-        <Image 
-          source={{ uri: item.image || getDestinationImage(item.name) }} 
-          style={styles.cardImage} 
-          resizeMode="cover"
+        <SmartImage
+          gradientOnly={true}
+          name={item?.name}
+          category={item?.category}
+          style={styles.cardImage}
         />
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.cardGradient} />
-        
-        <View style={styles.weatherHint}>
-           <Text style={styles.weatherHintText}>{item.weatherHint || '☀️ 28°C'}</Text>
+
+        <View style={styles.cardTopOverlay}>
+          <View style={styles.vibePill}>
+            <Text style={styles.vibePillText}>{themeInfo.vibe}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.saveIcon}
+            onPress={() => toggleSave(item?.id || item?._id)}
+          >
+            <Ionicons name={isSaved ? "heart" : "heart-outline"} size={22} color={isSaved ? "#FF4B4B" : "#fff"} />
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
-          style={styles.saveIcon}
-          onPress={() => toggleSave(item.id || item._id)}
-        >
-          <Ionicons name={isSaved ? "heart" : "heart-outline"} size={22} color={isSaved ? "#FF4B4B" : "#fff"} />
-        </TouchableOpacity>
-
         <View style={styles.cardInfo}>
-          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-          <View style={styles.cardLocRow}>
-            <Ionicons name="location-sharp" size={12} color="#fff" opacity={0.8} />
-            <Text style={styles.cardLocText}>{item.district || 'Tamil Nadu'}</Text>
+          <View style={styles.metaTopRow}>
+            <Text style={styles.cardName} numberOfLines={1}>{item?.name}</Text>
+            <View style={styles.weatherSmallBadge}>
+              <Text style={styles.weatherSmallText}>{item?.weatherHint?.split(' ')[1] || '28°C'}</Text>
+            </View>
           </View>
-          
-          <View style={styles.badgeRow}>
-            {item.crowdLevel && renderSmartBadge('Crowd', item.crowdLevel)}
-            {item.trafficLevel && renderSmartBadge('Traffic', item.trafficLevel)}
+
+          <View style={styles.cardLocRow}>
+            <Ionicons name="location-sharp" size={14} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.cardLocText}>{item?.district || 'Tamil Nadu'}</Text>
+          </View>
+
+          <View style={styles.cardBottomRow}>
+            <View style={styles.categoryBadgeSimple}>
+              <Text style={styles.categoryBadgeText}>{item?.category || 'EXPLORE'}</Text>
+            </View>
+            <View style={styles.ratingBadgeSimple}>
+              <Ionicons name="star" size={12} color="#FBBF24" />
+              <Text style={styles.ratingBadgeText}>{item.rating || '4.5'}</Text>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -177,19 +193,19 @@ export default function ExploreScreen() {
 
   const getFilteredPlaces = () => {
     let base = [...(exploreData?.aiPicks || []), ...(exploreData?.lowCrowd || []), ...FALLBACK_PLACES];
-    
+
     // Sort or filter based on mode
     if (exploreMode === 'Peace') {
-        base = base.filter(p => p.crowdLevel?.toLowerCase() === 'low');
+      base = base.filter(p => p?.crowdLevel?.toLowerCase() === 'low');
     } else if (exploreMode === 'Budget') {
-        base = base.filter(p => p.budgetRange?.toLowerCase().includes('₹500') || p.budgetRange?.toLowerCase().includes('₹800'));
+      base = base.filter(p => p?.budgetRange?.toLowerCase().includes('₹500') || p?.budgetRange?.toLowerCase().includes('₹800'));
     } else if (exploreMode === 'Nature') {
-        base = base.filter(p => p.category?.toLowerCase().includes('nature') || p.category?.toLowerCase().includes('hill'));
+      base = base.filter(p => p?.category?.toLowerCase().includes('nature') || p?.category?.toLowerCase().includes('hill'));
     } else if (exploreMode === 'Festival') {
-        base = base.filter(p => (exploreData?.festivals || []).some((f: any) => f.name.includes(p.name)) || p.category?.toLowerCase().includes('heritage'));
+      base = base.filter(p => (exploreData?.festivals || []).some((f: any) => f?.name?.includes(p?.name)) || p?.category?.toLowerCase().includes('heritage'));
     }
-    
-    const unique = Array.from(new Set(base.map(p => p.id || p._id))).map(id => base.find(p => (p.id || p._id) === id));
+
+    const unique = Array.from(new Set(base.map(p => p?.id || p?._id))).map(id => base.find(p => (p?.id || p?._id) === id)).filter(Boolean);
     console.log("📍 Stored destinations (Explore):", unique);
     return unique;
   };
@@ -197,18 +213,18 @@ export default function ExploreScreen() {
   const uniquePlaces = getFilteredPlaces();
 
   // ✅ Transform to flat lat/lng structure for ExploreMap markers
-  const mappedPlaces = uniquePlaces
+  const mappedPlaces = (uniquePlaces || [])
     .filter(Boolean)
     .map((d: any) => ({
-      id: d.id || d._id,
-      name: d.name,
-      lat: d.coordinates?.lat ?? d.lat ?? null,
-      lng: d.coordinates?.lng ?? d.lng ?? null,
-      district: d.district || d.location || 'Tamil Nadu',
-      category: d.category,
-      image: d.image,
+      id: d?.id || d?._id,
+      name: d?.name || 'Unknown',
+      lat: d?.coordinates?.lat ?? d?.lat ?? null,
+      lng: d?.coordinates?.lng ?? d?.lng ?? null,
+      district: d?.district || d?.location || 'Tamil Nadu',
+      category: d?.category || 'General',
+      image: d?.image || '',
     }))
-    .filter((p: any) => p.lat !== null && p.lng !== null);
+    .filter((p: any) => p.lat != null && p.lng != null && !isNaN(Number(p.lat)) && !isNaN(Number(p.lng)));
 
   console.log('📍 MAPPED PLACES for map:', mappedPlaces.length, mappedPlaces.map((p: any) => `${p.name}:[${p.lat},${p.lng}]`));
 
@@ -217,45 +233,45 @@ export default function ExploreScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
-      
+
       {/* Layer 1: Map (Fixed at top) */}
       <View style={styles.mapContainer}>
-        <ExploreMap 
-            places={mappedPlaces}
-            onPinSelect={(place: Destination) => setSelectedPinPlace(place)}
-            theme={theme as any}
+        <ExploreMap
+          places={mappedPlaces}
+          onPinSelect={(place: Destination) => setSelectedPinPlace(place)}
+          theme={theme as any}
         />
-        
+
         {/* Layer 2: Overlay Controls */}
         <LinearGradient colors={['rgba(0,0,0,0.6)', 'transparent', 'transparent']} style={styles.mapOverlay} pointerEvents="box-none">
-            <View style={styles.topControls}>
-                <View style={styles.searchBar}>
-                    <Ionicons name="search" size={20} color={colors.textLight} />
-                    <TextInput 
-                        style={[styles.searchInput, { color: colors.text }]}
-                        placeholder="Search Tamil Nadu Wonders..."
-                        placeholderTextColor={colors.textLight}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modeScroll}>
-                    {['AI', 'Peace', 'Budget', 'Nature', 'Festival'].map(mode => (
-                        <TouchableOpacity 
-                            key={mode} 
-                            style={[styles.modeChip, exploreMode === mode && styles.activeModeChip]}
-                            onPress={() => setExploreMode(mode)}
-                        >
-                            <Text style={[styles.modeText, exploreMode === mode && styles.activeModeText]}>{mode}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
+          <View style={styles.topControls}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={20} color={colors.textLight} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Search Tamil Nadu Wonders..."
+                placeholderTextColor={colors.textLight}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
             </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modeScroll}>
+              {['AI', 'Peace', 'Budget', 'Nature', 'Festival'].map(mode => (
+                <TouchableOpacity
+                  key={mode}
+                  style={[styles.modeChip, exploreMode === mode && styles.activeModeChip]}
+                  onPress={() => setExploreMode(mode)}
+                >
+                  <Text style={[styles.modeText, exploreMode === mode && styles.activeModeText]}>{mode}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </LinearGradient>
       </View>
 
       {/* Layer 3: Dynamic Content (Scrolled under map) */}
-      <ScrollView 
+      <ScrollView
         style={styles.contentScroll}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -263,71 +279,77 @@ export default function ExploreScreen() {
       >
         {/* AI Intelligence Banner */}
         <View style={styles.aiBanner}>
-           <LinearGradient colors={['#6B4EFF', '#8B5CF6']} start={{x:0, y:0}} end={{x:1, y:1}} style={styles.aiBannerGrad}>
-              <View style={styles.aiBannerContent}>
-                <View style={{flex: 1}}>
-                    <Text style={styles.aiBannerRef}>✨ AI INSIGHT</Text>
-                    <Text style={styles.aiBannerText}>
-                        {uniquePlaces[0]?.name || 'Yercaud'} is <Text style={{fontWeight: 'bold'}}>peaceful today</Text>. Low crowd, perfect weather for a getaway!
-                    </Text>
-                </View>
-                <TouchableOpacity 
-                    style={styles.aiBannerBtn}
-                    onPress={() => router.push({ pathname: '/plan-trip', params: { destination: uniquePlaces[0]?.name }} as any)}
-                >
-                    <Text style={styles.aiBannerBtnText}>Plan Now</Text>
-                </TouchableOpacity>
+          <LinearGradient colors={['#6B4EFF', '#8B5CF6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.aiBannerGrad}>
+            <View style={styles.aiBannerContent}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.aiBannerRef}> AI INSIGHT</Text>
+                <Text style={styles.aiBannerText}>
+                  {uniquePlaces[0]?.name || 'Yercaud'} is <Text style={{ fontWeight: 'bold' }}>peaceful today</Text>. Low crowd, perfect weather for a getaway!
+                </Text>
               </View>
-           </LinearGradient>
+              <TouchableOpacity
+                style={styles.aiBannerBtn}
+                onPress={() => router.push({ pathname: '/plan-trip', params: { destination: uniquePlaces[0]?.name || 'Yercaud' } } as any)}
+              >
+                <Text style={styles.aiBannerBtnText}>Plan Now</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
 
         {selectedPinPlace && (
-            <View style={styles.pinSelectionArea}>
-                <Text style={styles.sectionTitle}>Selected on Map</Text>
-                {renderPlaceCard({ item: selectedPinPlace, type: 'large' })}
-                <TouchableOpacity style={styles.clearPin} onPress={() => setSelectedPinPlace(null)}>
-                    <Text style={{ color: '#6B4EFF', fontWeight: 'bold' }}>Close Selection</Text>
-                </TouchableOpacity>
-            </View>
+          <View style={styles.pinSelectionArea}>
+            <Text style={styles.sectionTitle}>Selected on Map</Text>
+            {renderPlaceCard({ item: selectedPinPlace, type: 'large' })}
+            <TouchableOpacity style={styles.clearPin} onPress={() => setSelectedPinPlace(null)}>
+              <Text style={{ color: '#6B4EFF', fontWeight: 'bold' }}>Close Selection</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* AI Recommendations Grid */}
         <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>✨ Discovery Feed</Text>
-                <Text style={styles.modeLabel}>{exploreMode} MODE ACTIVE</Text>
-            </View>
-            <View style={styles.cardGrid}>
-                {(exploreData?.aiPicks || FALLBACK_PLACES).map((item: any) => (
-                    <View key={item.id || item._id}>
-                        {renderPlaceCard({ item, type: 'large' })}
-                    </View>
-                ))}
-            </View>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>✨ Discovery Feed</Text>
+            <Text style={styles.modeLabel}>{exploreMode} MODE ACTIVE</Text>
+          </View>
+          <View style={styles.cardGrid}>
+            {((exploreData?.aiPicks || FALLBACK_PLACES) || []).map((item: any, idx: number) => (
+              <View key={item?.id || item?._id || `fallback_${idx}`}>
+                {renderPlaceCard({ item, type: 'large' })}
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* Live Intelligence List */}
         <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Live Intelligence</Text>
-            {uniquePlaces.slice(0, 5).map((item: any) => (
-                <TouchableOpacity 
-                    key={item.id || item._id} 
-                    style={[styles.liveIntelRow, { backgroundColor: colors.card }]}
-                    onPress={() => router.push(`/destination/${item.id || item._id}` as any)}
-                >
-                    <Image source={{ uri: item.image }} style={styles.liveIntelImg} />
-                    <View style={styles.liveIntelInfo}>
-                        <Text style={[styles.liveIntelName, { color: colors.text }]}>{item.name}</Text>
-                        <View style={styles.liveIntelBadges}>
-                            {renderSmartBadge('Crowd', item.crowdLevel)}
-                            <Text style={[styles.weatherText, { color: colors.textSecondary }]}>{item.weatherHint || '☀️ 28°C'}</Text>
-                        </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
-                </TouchableOpacity>
-            ))}
+          <Text style={styles.sectionTitle}>Live Intelligence</Text>
+          {(uniquePlaces || []).filter(Boolean).slice(0, 5).map((item: any, idx: number) => (
+            <TouchableOpacity
+              key={item?.id || item?._id || `live_${idx}`}
+              style={[styles.liveIntelRow, { backgroundColor: colors.card }]}
+              onPress={() => handlePlaceNavigation(item)}
+            >
+              <SmartImage
+                uri={item?.image || getDestinationImage(item?.name || '')}
+                name={item?.name}
+                category={item?.category}
+                style={styles.liveIntelImg}
+                contentFit="cover"
+              />
+              <View style={styles.liveIntelInfo}>
+                <Text style={[styles.liveIntelName, { color: colors.text }]}>{item?.name || 'Place'}</Text>
+                <View style={styles.liveIntelBadges}>
+                  {item?.crowdLevel && renderSmartBadge('Crowd', item.crowdLevel)}
+                  <Text style={[styles.weatherText, { color: colors.textSecondary }]}>{item?.weatherHint || '☀️ 28°C'}</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+            </TouchableOpacity>
+          ))}
         </View>
-        
+
         <View style={{ height: 120 }} />
       </ScrollView>
     </View>
@@ -338,12 +360,12 @@ const getStyles = (colors: any) => StyleSheet.create({
   mapContainer: { height: MAP_HEIGHT, width: '100%' },
   mapOverlay: { ...StyleSheet.absoluteFillObject, paddingTop: 60, paddingHorizontal: 20 },
   topControls: { gap: 15 },
-  searchBar: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: 'rgba(255,255,255,0.95)', 
-    borderRadius: 20, 
-    paddingHorizontal: 15, 
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 20,
+    paddingHorizontal: 15,
     height: 50,
     elevation: 10,
     shadowColor: '#000',
@@ -379,15 +401,22 @@ const getStyles = (colors: any) => StyleSheet.create({
   cardGradient: { ...StyleSheet.absoluteFillObject },
   weatherHint: { position: 'absolute', top: 20, left: 20, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
   weatherHintText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  saveIcon: { position: 'absolute', top: 20, right: 20, backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 20 },
-  cardInfo: { position: 'absolute', bottom: 25, left: 25, right: 25 },
-  cardName: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 6 },
-  cardLocRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 15 },
-  cardLocText: { color: 'rgba(255,255,255,0.8)', fontSize: 13 },
-  badgeRow: { flexDirection: 'row', gap: 8 },
-  smartBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, gap: 5 },
-  badgeDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { fontSize: 9, fontWeight: 'bold' },
+  saveIcon: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 20 },
+  cardTopOverlay: { position: 'absolute', top: 20, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  vibePill: { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  vibePillText: { color: '#fff', fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
+  cardInfo: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: 'rgba(0,0,0,0.3)', padding: 15, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  metaTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  weatherSmallBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  weatherSmallText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  cardName: { color: '#fff', fontSize: 20, fontWeight: '900', flex: 1, marginRight: 10 },
+  cardLocRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12 },
+  cardLocText: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' },
+  cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  categoryBadgeSimple: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  categoryBadgeText: { color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '800', textTransform: 'uppercase' },
+  ratingBadgeSimple: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ratingBadgeText: { color: '#fff', fontSize: 12, fontWeight: '900' },
   pinSelectionArea: { paddingHorizontal: 20, marginBottom: 30, backgroundColor: 'rgba(107, 78, 255, 0.05)', paddingVertical: 20, borderRadius: 25 },
   clearPin: { alignSelf: 'center', marginTop: 15 },
   liveIntelRow: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 20, marginHorizontal: 20, marginBottom: 12, elevation: 2 },
@@ -396,4 +425,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   liveIntelName: { fontSize: 16, fontWeight: 'bold' },
   liveIntelBadges: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 5 },
   weatherText: { fontSize: 12 },
+  smartBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  badgeDot: { width: 6, height: 6, borderRadius: 3 },
+  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 });

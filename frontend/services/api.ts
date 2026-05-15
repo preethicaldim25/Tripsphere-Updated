@@ -252,11 +252,19 @@ const apiClient = async <T>(
   // ✅ Guard: Block any call with undefined in path
   if (!endpoint || endpoint.includes('/undefined') || endpoint.includes('undefined/')) {
     console.warn(`🚫 BLOCKED API CALL - Invalid endpoint: ${endpoint}`);
-    throw new Error('Invalid API endpoint (undefined ID)');
+    return Promise.reject(new Error('Invalid API endpoint (undefined ID)'));
   }
 
-  console.log(`🌐 API_URL: ${API_URL}`);
-  console.log(`📡 API Request: ${API_URL}${endpoint}`);
+  // ✅ Defensive check for API_URL
+  const baseUrl = API_URL || '';
+  console.log(`🌐 API_URL: ${baseUrl}`);
+  
+  // ✅ Robust URL construction
+  const safeBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const safeEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const fullUrl = `${safeBaseUrl}${safeEndpoint}`;
+  
+  console.log(`📡 API Request: ${fullUrl}`);
 
   const token = await getToken();
 
@@ -264,6 +272,7 @@ const apiClient = async <T>(
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Bypass-Tunnel-Reminder': 'true',
+    'ngrok-skip-browser-warning': 'true',
   };
 
   if (token) {
@@ -279,10 +288,14 @@ const apiClient = async <T>(
   };
 
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, config);
-    return handleResponse(response) as Promise<T>;
+    console.log(`[AUDIT API] ▶️ Starting fetch to ${safeEndpoint}`);
+    const response = await fetch(fullUrl, config);
+    console.log(`[AUDIT API] ◀️ Received response from ${safeEndpoint} - Status: ${response.status}`);
+    const parsed = await handleResponse(response) as Promise<T>;
+    console.log(`[AUDIT API] ✅ Successfully parsed response from ${safeEndpoint}`);
+    return parsed;
   } catch (error) {
-    console.error(`❌ Network error on ${endpoint}:`, error);
+    console.error(`[AUDIT API] ❌ Network error on ${safeEndpoint}:`, error);
     throw error;
   }
 };
@@ -366,7 +379,8 @@ export const destinationsAPI = {
     if (category) params.append('category', category);
     if (search) params.append('search', search);
     const qs = params.toString();
-    return apiClient(`/places${qs ? '?' + qs : ''}`);
+    // ✅ Fixed: Added trailing slash to match FastAPI's @places_router.get("/")
+    return apiClient(`/places/${qs ? '?' + qs : ''}`);
   },
 
   getSmartRecommendations: (params: {

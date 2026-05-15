@@ -25,10 +25,10 @@ async def startup_event():
 # CORS configuration - VERY IMPORTANT for web and mobile
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=["http://localhost:8082", "http://localhost:19006", "http://localhost:19000", "*"],
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*", "Authorization", "Content-Type", "Bypass-Tunnel-Reminder"],
+    allow_headers=["*", "Authorization", "Content-Type", "Bypass-Tunnel-Reminder", "ngrok-skip-browser-warning"],
     expose_headers=["*"],
 )
 

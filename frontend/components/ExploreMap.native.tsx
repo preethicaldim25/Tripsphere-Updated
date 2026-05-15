@@ -28,19 +28,23 @@ const ExploreMap = ({ places, onPinSelect, theme, showRoute, routePlaces }: Expl
     };
     
     if (places && places.length > 0) {
-        const lats = places.map(p => p.latitude || p.coordinates?.lat).filter(Boolean);
-        const lngs = places.map(p => p.longitude || p.coordinates?.lng).filter(Boolean);
+        const lats = places.map(p => Number(p.latitude || p.coordinates?.lat || p.lat)).filter(n => !isNaN(n));
+        const lngs = places.map(p => Number(p.longitude || p.coordinates?.lng || p.lng)).filter(n => !isNaN(n));
         if (lats.length > 0 && lngs.length > 0) {
             const minLat = Math.min(...lats);
             const maxLat = Math.max(...lats);
             const minLng = Math.min(...lngs);
             const maxLng = Math.max(...lngs);
-            initialRegion = {
-                latitude: (minLat + maxLat) / 2,
-                longitude: (minLng + maxLng) / 2,
-                latitudeDelta: Math.max(0.1, (maxLat - minLat) * 1.5),
-                longitudeDelta: Math.max(0.1, (maxLng - minLng) * 1.5),
-            };
+            
+            // Final safety check: ensure all calculated values are finite
+            if ([minLat, maxLat, minLng, maxLng].every(n => isFinite(n))) {
+                initialRegion = {
+                    latitude: (minLat + maxLat) / 2,
+                    longitude: (minLng + maxLng) / 2,
+                    latitudeDelta: Math.max(0.1, (maxLat - minLat) * 1.5),
+                    longitudeDelta: Math.max(0.1, (maxLng - minLng) * 1.5),
+                };
+            }
         }
     }
 
@@ -51,28 +55,33 @@ const ExploreMap = ({ places, onPinSelect, theme, showRoute, routePlaces }: Expl
                 provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                 initialRegion={initialRegion}
                 customMapStyle={theme === 'dark' ? darkMapStyle : []}
-                showsUserLocation={true}
+                showsUserLocation={false} // Disabled to prevent permission crashes in production APK
                 showsMyLocationButton={false}
             >
-                {showRoute && (routePlaces || places).length > 1 && (
+                {showRoute && Array.isArray(routePlaces || places) && (routePlaces || places).length > 1 && (
                     <Polyline
-                        coordinates={(routePlaces || places).map((place) => ({
-                            latitude: place.latitude || place.coordinates?.lat || 11.0,
-                            longitude: place.longitude || place.coordinates?.lng || 78.0,
-                        }))}
+                        coordinates={(routePlaces || places)
+                            .map((place) => ({
+                                latitude: Number(place?.latitude || place?.coordinates?.lat || place?.lat),
+                                longitude: Number(place?.longitude || place?.coordinates?.lng || place?.lng),
+                            }))
+                            .filter(coord => !isNaN(coord.latitude) && !isNaN(coord.longitude) && isFinite(coord.latitude) && isFinite(coord.longitude))}
                         strokeColor="#6B4EFF"
                         strokeWidth={3}
                         lineDashPattern={[10, 5]}
                     />
                 )}
-                {places.map((place) => {
-                    const isSelected = selectedId === (place.id || place._id);
+                {(places || []).map((place, index) => {
+                    const isSelected = selectedId === (place?.id || place?._id);
+                    const lat = Number(place?.latitude || place?.coordinates?.lat || place?.lat || 11.0);
+                    const lng = Number(place?.longitude || place?.coordinates?.lng || place?.lng || 78.0);
                     return (
                         <Marker
-                            key={place.id || place._id}
+                            // @ts-ignore
+                            key={`${place?.id || place?._id || index}`}
                             coordinate={{
-                                latitude: place.latitude || place.coordinates?.lat || 11.0,
-                                longitude: place.longitude || place.coordinates?.lng || 78.0,
+                                latitude: isNaN(lat) ? 11.0 : lat,
+                                longitude: isNaN(lng) ? 78.0 : lng,
                             }}
                             onPress={() => handlePinPress(place)}
                         >
@@ -83,9 +92,9 @@ const ExploreMap = ({ places, onPinSelect, theme, showRoute, routePlaces }: Expl
                             ]}>
                                 <Ionicons 
                                     name={
-                                        (place.category?.toLowerCase().includes('temple') ? 'business' :
-                                        place.category?.toLowerCase().includes('hill') ? 'mountain' :
-                                        place.category?.toLowerCase().includes('beach') ? 'water' : 'location') as any
+                                        (place.category?.toLowerCase()?.includes('temple') ? 'business' :
+                                        place.category?.toLowerCase()?.includes('hill') ? 'mountain' :
+                                        place.category?.toLowerCase()?.includes('beach') ? 'water' : 'location') as any
                                     } 
                                     size={isSelected ? 18 : 14} 
                                     color="#fff" 

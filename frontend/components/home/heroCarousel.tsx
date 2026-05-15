@@ -8,7 +8,7 @@ import {
   Platform,
   ListRenderItem,
 } from 'react-native';
-import { Image } from 'expo-image';
+import { SmartImage } from '@/components/ui/SmartImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -156,16 +156,14 @@ const HeroItem = ({
   }));
 
   return (
-    <View style={styles.itemContainer}>
+    <View style={[styles.itemContainer, { width: SCREEN_WIDTH }]}>
       <View style={styles.imageWrapper}>
         <Animated.View style={[styles.imageContainer, imageAnimatedStyle]}>
-          <Image
-            source={{ uri: item.image }}
+          <SmartImage
+            gradientOnly={true}
+            name={item.title}
+            category={item.subtitle}
             style={styles.image}
-            contentFit="cover"
-            contentPosition="center"
-            transition={300}
-            cachePolicy="memory-disk"
           />
         </Animated.View>
       </View>

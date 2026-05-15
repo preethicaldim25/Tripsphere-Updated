@@ -5,10 +5,10 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   Dimensions, 
-  Image, 
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { SmartImage } from './ui/SmartImage';
 import MapView, { Marker } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,8 +44,8 @@ const TamilMap = () => {
   };
 
   const filteredPlaces = selectedCategory === 'All' 
-    ? places 
-    : places.filter(p => p.category?.toLowerCase() === selectedCategory.toLowerCase());
+    ? (places || []) 
+    : (places || []).filter(p => p?.category?.toLowerCase() === selectedCategory.toLowerCase());
 
   if (loading) {
     return (
@@ -68,30 +68,34 @@ const TamilMap = () => {
         }}
         customMapStyle={theme === 'dark' ? darkMapStyle : []}
       >
-        {filteredPlaces.map((place: any) => (
+        {(filteredPlaces || []).map((place: any, index: number) => {
+          const lat = Number(place?.latitude || place?.location?.lat || place?.lat || 11.0);
+          const lng = Number(place?.longitude || place?.location?.lng || place?.lng || 78.0);
+          return (
           <Marker
-            key={place.id || place._id}
+            // @ts-ignore
+            key={`${place?.id || place?._id || index}`}
             coordinate={{
-              latitude: place.latitude || place.location?.lat || 11.0,
-              longitude: place.longitude || place.location?.lng || 78.0,
+              latitude: isNaN(lat) ? 11.0 : lat,
+              longitude: isNaN(lng) ? 78.0 : lng,
             }}
-            title={place.name}
-            description={place.category}
+            title={place?.name || 'Place'}
+            description={place?.category || ''}
             onPress={() => setSelectedPlace(place)}
           >
             <View style={[styles.markerContainer, { backgroundColor: '#6B4EFF' }]}>
                 <Ionicons 
                     name={
-                        (place.category?.toLowerCase().includes('temple') ? 'business' :
-                        place.category?.toLowerCase().includes('hill') ? 'mountain' :
-                        place.category?.toLowerCase().includes('beach') ? 'water' : 'location') as any
+                        (place.category?.toLowerCase()?.includes('temple') ? 'business' :
+                        place.category?.toLowerCase()?.includes('hill') ? 'mountain' :
+                        place.category?.toLowerCase()?.includes('beach') ? 'water' : 'location') as any
                     } 
                     size={16} 
                     color="#fff" 
                 />
             </View>
           </Marker>
-        ))}
+        )})}
       </MapView>
 
       <View style={styles.headerOverlay}>
@@ -119,21 +123,29 @@ const TamilMap = () => {
              onPress={() => router.push(`/destination/${selectedPlace.id || selectedPlace._id}` as any)}
              activeOpacity={0.9}
            >
-             <Image source={{ uri: selectedPlace.image || 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220' }} style={styles.detailImage} />
+             <SmartImage 
+                gradientOnly={true}
+                name={selectedPlace.name}
+                category={selectedPlace.category}
+                style={styles.detailImage} 
+             />
              <View style={styles.detailInfo}>
                <View style={styles.detailHeader}>
-                 <Text style={[styles.detailName, { color: colors.text }]}>{selectedPlace.name}</Text>
+                 <Text style={[styles.detailName, { color: colors.text }]} numberOfLines={1}>{selectedPlace.name}</Text>
                  <TouchableOpacity onPress={() => setSelectedPlace(null)}>
                    <Ionicons name="close-circle" size={24} color={colors.textLight} />
                  </TouchableOpacity>
                </View>
-               <Text style={[styles.detailCategory, { color: colors.textSecondary }]}>{selectedPlace.category}</Text>
+               <Text style={[styles.detailCategory, { color: colors.textSecondary }]}>{selectedPlace.category} • Tamil Nadu</Text>
                <View style={styles.detailFooter}>
                  <View style={styles.ratingRow}>
                     <Ionicons name="star" size={14} color="#FBBF24" />
                     <Text style={[styles.ratingText, { color: colors.text }]}>{selectedPlace.rating || '4.5'}</Text>
                  </View>
-                 <Text style={styles.exploreBtnText}>Explorer →</Text>
+                 <View style={styles.exploreBtn}>
+                    <Text style={styles.exploreBtnText}>Explorer</Text>
+                    <Ionicons name="arrow-forward" size={12} color="#6B4EFF" />
+                 </View>
                </View>
              </View>
            </TouchableOpacity>
@@ -174,6 +186,7 @@ const styles = StyleSheet.create({
   detailFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   ratingText: { fontSize: 14, fontWeight: '600' },
+  exploreBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   exploreBtnText: { color: '#6B4EFF', fontSize: 12, fontWeight: 'bold' }
 });
 

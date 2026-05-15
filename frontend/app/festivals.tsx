@@ -261,15 +261,15 @@ export default function FestivalsScreen() {
               onPress={() => handleFestivalPress(item)}
               activeOpacity={0.8}
             >
-              <View style={styles.cardIcon}>
+              <View style={[styles.cardIcon, { backgroundColor: colors.primary + '10' }]}>
                 <Text style={styles.icon}>{item.icon}</Text>
               </View>
               <View style={styles.cardContent}>
                 <View style={styles.cardHeader}>
                   <Text style={[styles.cardName, { color: colors.text }]}>{item.name}</Text>
                   {isUpcoming(item.date) && (
-                    <View style={[styles.upcomingBadge, { backgroundColor: colors.primary + '20' }]}>
-                      <Text style={[styles.upcomingBadgeText, { color: colors.primary }]}>Upcoming</Text>
+                    <View style={[styles.upcomingBadge, { backgroundColor: '#10B98120' }]}>
+                      <Text style={[styles.upcomingBadgeText, { color: '#10B981' }]}>Live soon</Text>
                     </View>
                   )}
                 </View>
@@ -278,14 +278,17 @@ export default function FestivalsScreen() {
                 </Text>
                 <View style={styles.cardFooter}>
                   <View style={styles.cardDate}>
-                    <Ionicons name="calendar-outline" size={14} color={colors.primary} />
+                    <Ionicons name="calendar-outline" size={12} color={colors.primary} />
                     <Text style={[styles.cardDateText, { color: colors.primary }]}>{item.date}</Text>
                   </View>
-                  <View style={[styles.typeBadge, { backgroundColor: colors.lightPurple }]}>
-                    <Text style={[styles.typeBadgeText, { color: colors.primary }]}>{item.type}</Text>
+                  <View style={[styles.typeBadge, { backgroundColor: colors.primary + '10' }]}>
+                    <Text style={[styles.typeBadgeText, { color: colors.primary }]}>{item.type?.toUpperCase()}</Text>
                   </View>
                 </View>
-                <Text style={[styles.cardRegion, { color: colors.textLight }]}>📍 {item.region}</Text>
+                <View style={styles.regionRow}>
+                    <Ionicons name="location-outline" size={10} color={colors.textLight} />
+                    <Text style={[styles.cardRegion, { color: colors.textLight }]}>{item.region}</Text>
+                </View>
               </View>
             </TouchableOpacity>
           )}
@@ -451,59 +454,59 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   card: {
     flexDirection: 'row',
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   cardIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#F3F0FF',
+    width: 60,
+    height: 60,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   icon: {
     fontSize: 28,
   },
   cardContent: {
     flex: 1,
+    justifyContent: 'center',
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   cardName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
   upcomingBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   upcomingBadgeText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   cardDesc: {
-    fontSize: 12,
-    marginBottom: 8,
-    lineHeight: 16,
+    fontSize: 13,
+    marginBottom: 12,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   cardDate: {
     flexDirection: 'row',
@@ -511,20 +514,27 @@ const getStyles = (colors: any) => StyleSheet.create({
     gap: 4,
   },
   cardDateText: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '700',
   },
   typeBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   typeBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  regionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   cardRegion: {
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: '600',
   },
   footerNote: {
     alignItems: 'center',

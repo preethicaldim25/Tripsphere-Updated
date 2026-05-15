@@ -1,6 +1,6 @@
 import React, { memo, useCallback } from 'react';
 import { View, TouchableOpacity, FlatList, StyleSheet, ListRenderItem } from 'react-native';
-import { Image } from 'expo-image';
+import { SmartImage } from '@/components/ui/SmartImage';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/shared/themedtext';
 import { useTheme } from '@/context/themecontext';
@@ -39,29 +39,24 @@ const PopularGridComponent: React.FC<Props> = ({
 
   const renderItem: ListRenderItem<Destination> = useCallback(({ item }) => (
     <TouchableOpacity
-      style={[styles.card, { width: itemWidth, height: itemHeight }]}
+      style={[styles.card, { width: itemWidth, height: itemHeight, backgroundColor: colors.card }]}
       onPress={() => onItemPress(item.id)}
       activeOpacity={0.9}
     >
-      <Image
-        source={{ uri: getDestinationImage(item.name) }}
+      <SmartImage
+        gradientOnly={true}
+        name={item.name}
+        category={getDestinationImage(item.name) ? 'default' : 'city'} // Simple logic for grid
         style={styles.image}
-        contentFit="cover"
-        transition={200}
-        cachePolicy="memory-disk"
       />
-      <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.3)' }]} />
       <View style={styles.content}>
         <ThemedText style={styles.name} numberOfLines={1}>{item.name}</ThemedText>
-        <View style={styles.locationContainer}>
-          <Ionicons name="location-outline" size={responsiveFontSize(10)} color="#fff" />
-          <ThemedText style={styles.location} numberOfLines={1}>{item.location}</ThemedText>
-        </View>
-        <View style={styles.ratingContainer}>
-          <Ionicons name="star" size={responsiveFontSize(10)} color="#FFD700" />
-          <ThemedText style={styles.rating}>
-            {item.rating} ({item.reviews})
-          </ThemedText>
+        <View style={styles.metaRow}>
+          <View style={styles.ratingBox}>
+            <Ionicons name="star" size={10} color="#FFD700" />
+            <ThemedText style={styles.ratingText}>{item.rating}</ThemedText>
+          </View>
+          <ThemedText style={styles.locationText} numberOfLines={1}>{item.location.split(',')[0]}</ThemedText>
         </View>
       </View>
     </TouchableOpacity>
@@ -152,32 +147,34 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
   name: {
     color: '#fff',
-    fontSize: responsiveFontSize(14),
-    fontWeight: '600',
-    marginBottom: spacing.xs,
+    fontSize: responsiveFontSize(13),
+    fontWeight: '800',
+    marginBottom: 2,
   },
-  locationContainer: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
+    gap: 6,
   },
-  location: {
+  ratingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  ratingText: {
     color: '#fff',
     fontSize: responsiveFontSize(10),
+    fontWeight: '700',
+  },
+  locationText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: responsiveFontSize(10),
+    fontWeight: '500',
     flex: 1,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  rating: {
-    color: '#fff',
-    fontSize: responsiveFontSize(10),
   },
 });
 

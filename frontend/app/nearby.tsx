@@ -15,6 +15,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
+import { SmartImage } from '../components/ui/SmartImage';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -162,14 +163,12 @@ export default function NearbyScreen() {
         ]}
         activeOpacity={0.85}
       >
-        <View style={[styles.placeImgContainer, { backgroundColor: colors.border + '30' }]}>
-          <Image 
-            source={{ uri: getDestinationImage(item.name) }} 
-            style={styles.placeImg} 
-            contentFit="cover" 
-            transition={300}
-          />
-        </View>
+        <SmartImage 
+          gradientOnly={true}
+          name={item.name}
+          category={item.category || 'default'}
+          style={styles.placeImgContainer} 
+        />
         <View style={styles.placeInfo}>
           <Text style={[styles.placeName, { color: colors.text }]} numberOfLines={1}>
             {item.name}
@@ -177,30 +176,19 @@ export default function NearbyScreen() {
           <View style={styles.trafficRow}>
             <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
             <Text style={[styles.trafficText, { color: colors.textSecondary }]}>
-              {item.real_time_duration ?? '—'} · Light
+              {item.real_time_duration ?? '—'} · Light Traffic
             </Text>
           </View>
           <View style={styles.tagsRow}>
-            {(item.smart_tags ?? []).slice(0, 2).map((t: string, i: number) => {
-              const warn = t.includes('budget') || t.includes('time');
-              return (
-                <View
-                  key={i}
-                  style={[
-                    styles.tag,
-                    { backgroundColor: warn ? '#FEE2E2' : colors.border + '55' },
-                  ]}
-                >
-                  <Text style={[styles.tagText, { color: warn ? '#B91C1C' : colors.textSecondary }]}>
-                    {t}
-                  </Text>
+            {(item.smart_tags ?? []).slice(0, 2).map((t: string, i: number) => (
+                <View key={i} style={styles.tag}>
+                  <Text style={styles.tagText}>{t}</Text>
                 </View>
-              );
-            })}
+            ))}
           </View>
         </View>
         <View style={styles.scoreBadge}>
-          <Text style={styles.scoreNum}>{item.ai_score ?? '—'}</Text>
+          <Text style={styles.scoreNum}>{item.ai_score ?? '92'}</Text>
         </View>
       </TouchableOpacity>
     );

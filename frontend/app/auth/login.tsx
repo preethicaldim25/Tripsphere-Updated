@@ -56,22 +56,26 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
   const handleAuth = async () => {
     // Validation
-    if (!email || !password || (!isLogin && !name)) {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+    const trimmedName = name.trim();
+
+    if (!trimmedEmail || !trimmedPassword || (!isLogin && !trimmedName)) {
       Alert.alert('Error', 'Please fill all required fields');
       return;
     }
 
-    if (!validateEmail(email)) {
+    if (!validateEmail(trimmedEmail)) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
-    if (password.length < 6) {
+    if (trimmedPassword.length < 6) {
       Alert.alert('Error', 'Password must be at least 6 characters');
       return;
     }
 
-    if (!isLogin && password !== confirmPassword) {
+    if (!isLogin && trimmedPassword !== confirmPassword.trim()) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
@@ -79,14 +83,14 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
     setLoading(true);
     try {
       if (isLogin) {
-        const result = await login(email, password);
+        const result = await login(trimmedEmail, trimmedPassword);
         if (result.success) {
           router.replace('/(tabs)');
         } else {
           Alert.alert('Login Failed', result.error || 'Invalid credentials');
         }
       } else {
-        const result = await register(name, email, password);
+        const result = await register(trimmedName, trimmedEmail, trimmedPassword);
         if (result.success) {
           Alert.alert('Success', 'Account created successfully!', [
             { text: 'OK', onPress: () => router.replace('/(tabs)') }
