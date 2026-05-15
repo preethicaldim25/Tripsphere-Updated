@@ -28,26 +28,26 @@ const HERO_H = 250;
 const SLIDE_W = SCREEN_W - 32;
 
 const FALLBACK_HERO = [
-  { id: 'ooty',       title: 'Ooty',       subtitle: 'Hill Station',  tags: ['Nature', 'Families'] },
-  { id: 'madurai',    title: 'Madurai',    subtitle: 'Heritage',      tags: ['Culture', 'Temples'] },
-  { id: 'chennai',    title: 'Chennai',    subtitle: 'Coastal City',  tags: ['Beaches', 'Urban'] },
-  { id: 'kodaikanal', title: 'Kodaikanal', subtitle: 'Hill Station',  tags: ['Nature', 'Couples'] },
-  { id: 'rameswaram', title: 'Rameswaram', subtitle: 'Spiritual',     tags: ['Temple', 'Island'] },
+  { id: 'ooty', title: 'Ooty', subtitle: 'Hill Station', tags: ['Nature', 'Families'] },
+  { id: 'madurai', title: 'Madurai', subtitle: 'Heritage', tags: ['Culture', 'Temples'] },
+  { id: 'chennai', title: 'Chennai', subtitle: 'Coastal City', tags: ['Beaches', 'Urban'] },
+  { id: 'kodaikanal', title: 'Kodaikanal', subtitle: 'Hill Station', tags: ['Nature', 'Couples'] },
+  { id: 'rameswaram', title: 'Rameswaram', subtitle: 'Spiritual', tags: ['Temple', 'Island'] },
 ];
 
 const FALLBACK_CARDS = [
-  { id: 'ooty',       name: 'Ooty',       category: 'Hill Station', rating: 4.8, reviews: 1200, crowd: 'Medium', temperature: '18°C' },
-  { id: 'madurai',    name: 'Madurai',    category: 'Heritage',     rating: 4.9, reviews: 2500, crowd: 'High',   temperature: '28°C' },
-  { id: 'chennai',    name: 'Chennai',    category: 'Coastal',      rating: 4.5, reviews: 5000, crowd: 'High',   temperature: '32°C' },
+  { id: 'ooty', name: 'Ooty', category: 'Hill Station', rating: 4.8, reviews: 1200, crowd: 'Medium', temperature: '18°C' },
+  { id: 'madurai', name: 'Madurai', category: 'Heritage', rating: 4.9, reviews: 2500, crowd: 'High', temperature: '28°C' },
+  { id: 'chennai', name: 'Chennai', category: 'Coastal', rating: 4.5, reviews: 5000, crowd: 'High', temperature: '32°C' },
   { id: 'kodaikanal', name: 'Kodaikanal', category: 'Hill Station', rating: 4.7, reviews: 1800, crowd: 'Medium', temperature: '20°C' },
-  { id: 'rameswaram', name: 'Rameswaram', category: 'Spiritual',    rating: 4.6, reviews: 900,  crowd: 'Low',    temperature: '30°C' },
+  { id: 'rameswaram', name: 'Rameswaram', category: 'Spiritual', rating: 4.6, reviews: 900, crowd: 'Low', temperature: '30°C' },
 ];
 
 const ACTIONS = [
-  { id: 'plan',   label: 'Plan Trip', icon: 'map',       route: '/plan-trip',    bg: '#2C2A34', color: '#B388FF' },
-  { id: 'nearby', label: 'Nearby',    icon: 'location',  route: '/nearby',       bg: '#E8F5E9', color: '#4CAF50' },
-  { id: 'gems',   label: 'Gems',      icon: 'diamond',   route: '/hidden-gems',  bg: '#FFF3E0', color: '#FF9800' },
-  { id: 'road',   label: 'Road Trip', icon: 'car',       route: '/road-trip',    bg: '#E3F2FD', color: '#2196F3' },
+  { id: 'plan', label: 'Plan Trip', icon: 'map', route: '/plan-trip', bg: '#2C2A34', color: '#B388FF' },
+  { id: 'nearby', label: 'Nearby', icon: 'location', route: '/nearby', bg: '#E8F5E9', color: '#4CAF50' },
+  { id: 'gems', label: 'Gems', icon: 'diamond', route: '/hidden-gems', bg: '#FFF3E0', color: '#FF9800' },
+  { id: 'road', label: 'Road Trip', icon: 'car', route: '/road-trip', bg: '#E3F2FD', color: '#2196F3' },
 ];
 
 // ─────────────────────────────────────────────
@@ -69,7 +69,7 @@ const SkeletonCard = ({ colors }: any) => {
 // ─────────────────────────────────────────────
 const HeroCarousel = ({ data, onPress, colors }: any) => {
   const flatRef = useRef<any>(null);
-  const idxRef  = useRef(0);
+  const idxRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -93,28 +93,28 @@ const HeroCarousel = ({ data, onPress, colors }: any) => {
   const renderItem = useCallback(({ item }: any) => {
     const themeInfo = CATEGORY_THEMES[item.category?.toLowerCase()] || CATEGORY_THEMES.default;
     return (
-        <TouchableOpacity
+      <TouchableOpacity
         activeOpacity={0.93}
         onPress={() => onPress(item.id)}
         style={{ width: SLIDE_W, height: HERO_H }}
-        >
+      >
         <SmartImage
-            gradientOnly={true}
-            name={item.title}
-            category={item.category}
-            style={StyleSheet.absoluteFill}
+          gradientOnly={true}
+          name={item.title}
+          category={item.category}
+          style={StyleSheet.absoluteFill}
         />
         <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.6)']}
-            style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', padding: 24 }]}
+          colors={['transparent', 'rgba(0,0,0,0.6)']}
+          style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', padding: 24 }]}
         >
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, marginBottom: 8 }}>
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 }}>{themeInfo.vibe}</Text>
-            </View>
-            <Text style={{ color: '#fff', fontSize: 32, fontWeight: '900', letterSpacing: -1, marginBottom: 4 }}>{item.title}</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600' }}>{item.subtitle}</Text>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, marginBottom: 8 }}>
+            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 }}>{themeInfo.vibe}</Text>
+          </View>
+          <Text style={{ color: '#fff', fontSize: 32, fontWeight: '900', letterSpacing: -1, marginBottom: 4 }}>{item.title}</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600' }}>{item.subtitle}</Text>
         </LinearGradient>
-        </TouchableOpacity>
+      </TouchableOpacity>
     );
   }, [onPress]);
 
@@ -130,7 +130,7 @@ const HeroCarousel = ({ data, onPress, colors }: any) => {
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={onScroll}
-        onScrollToIndexFailed={() => {}}
+        onScrollToIndexFailed={() => { }}
         bounces={false}
         style={{ width: SLIDE_W }}
         getItemLayout={(_, index) => ({ length: SLIDE_W, offset: SLIDE_W * index, index })}
@@ -180,31 +180,31 @@ const DestCard = ({ item, onPress, colors }: any) => {
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
       }}
     >
-      <SmartImage 
+      <SmartImage
         gradientOnly={true}
         name={item.name}
         category={item.category}
-        style={StyleSheet.absoluteFill} 
+        style={StyleSheet.absoluteFill}
       />
       <View style={{ ...StyleSheet.absoluteFillObject, padding: 20, justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
-                <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900', textTransform: 'uppercase' }}>{themeInfo.vibe}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                <Ionicons name="sunny-outline" size={12} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{item.temperature || '28°C'}</Text>
-            </View>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
+            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900', textTransform: 'uppercase' }}>{themeInfo.vibe}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+            <Ionicons name="sunny-outline" size={12} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{item.temperature || '28°C'}</Text>
+          </View>
         </View>
         <View>
-            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', marginBottom: 2 }}>{item.name}</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>{item.category}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Ionicons name="star" size={12} color="#FFD700" />
-                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>{item.rating}</Text>
-                </View>
+          <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', marginBottom: 2 }}>{item.name}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>{item.category}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="star" size={12} color="#FFD700" />
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>{item.rating}</Text>
             </View>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -240,21 +240,21 @@ const CityCard = ({ item, onPress, colors }: any) => (
     style={{ width: '100%', height: 140, borderRadius: 24, overflow: 'hidden', marginBottom: 16, backgroundColor: colors.card }}
     activeOpacity={0.9}
   >
-    <SmartImage 
-        gradientOnly={true}
-        name={item.name}
-        category={item.category || 'City'}
-        style={StyleSheet.absoluteFill} 
+    <SmartImage
+      gradientOnly={true}
+      name={item.name}
+      category={item.category || 'City'}
+      style={StyleSheet.absoluteFill}
     />
     <View style={{ ...StyleSheet.absoluteFillObject, padding: 16, justifyContent: 'flex-end' }}>
-        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900' }}>{item.name}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                <Ionicons name="star" size={10} color="#FFD700" />
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{item.rating}</Text>
-            </View>
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '600' }}>{item.category}</Text>
+      <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900' }}>{item.name}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          <Ionicons name="star" size={10} color="#FFD700" />
+          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{item.rating}</Text>
         </View>
+        <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '600' }}>{item.category}</Text>
+      </View>
     </View>
   </TouchableOpacity>
 );
@@ -284,15 +284,15 @@ const AICard = ({ onPress, colors }: any) => {
 // Main Screen
 // ─────────────────────────────────────────────
 export default function HomeScreen() {
-  const router  = useRouter();
+  const router = useRouter();
   const { user } = useAuth();
   const { theme, toggleTheme, colors } = useTheme();
 
-  const [search,      setSearch]      = useState('');
-  const [apiLoading,  setApiLoading]  = useState(false);
-  const [heroData,    setHeroData]    = useState(FALLBACK_HERO);
+  const [search, setSearch] = useState('');
+  const [apiLoading, setApiLoading] = useState(false);
+  const [heroData, setHeroData] = useState(FALLBACK_HERO);
   const [happeningNow, setHappeningNow] = useState(FALLBACK_CARDS);
-  const [aiPicks,     setAiPicks]     = useState(FALLBACK_CARDS.slice().reverse());
+  const [aiPicks, setAiPicks] = useState(FALLBACK_CARDS.slice().reverse());
   const [popularCities, setPopularCities] = useState(FALLBACK_CARDS.slice(0, 4));
 
   const themeBounce = useSharedValue(1);
@@ -321,9 +321,9 @@ export default function HomeScreen() {
 
         if (exploreRes.status === 'fulfilled' && exploreRes.value) {
           const ex = exploreRes.value;
-          if (ex.weekendTrips?.length)  setHappeningNow(ex.weekendTrips);
-          if (ex.aiPicks?.length)       setAiPicks(ex.aiPicks);
-          if (ex.lowCrowd?.length)      setPopularCities(ex.lowCrowd.slice(0, 4));
+          if (ex.weekendTrips?.length) setHappeningNow(ex.weekendTrips);
+          if (ex.aiPicks?.length) setAiPicks(ex.aiPicks);
+          if (ex.lowCrowd?.length) setPopularCities(ex.lowCrowd.slice(0, 4));
         }
       } catch (e) {
         console.warn('[Home] API error, using fallback:', e);
@@ -334,7 +334,7 @@ export default function HomeScreen() {
     load();
   }, []);
 
-  const nav   = useCallback((path: string) => router.push(path as any), [router]);
+  const nav = useCallback((path: string) => router.push(path as any), [router]);
   const goTo = useCallback((id: string) => {
     if (!id) return;
     router.push({
@@ -362,7 +362,7 @@ export default function HomeScreen() {
         {/* ── HEADER ── */}
         <View style={s.header}>
           <View>
-            <Text style={[s.greeting, { color: colors.text }]}>Vanakkam,</Text>
+            <Text style={[s.greeting, { color: colors.text }]}>Welcome,</Text>
             <Text style={[s.brand, { color: colors.primary }]}>Tripsphere</Text>
           </View>
           <View style={s.headerRight}>
@@ -460,9 +460,9 @@ const s = StyleSheet.create({
     alignItems: 'center', paddingHorizontal: 20,
     paddingTop: 16, paddingBottom: 16,
   },
-  greeting:   { fontSize: 16, fontWeight: '700', marginBottom: 2, color: '#fff' },
-  brand:      { fontSize: Math.min(32, SCREEN_W * 0.085), fontWeight: '900', letterSpacing: -0.5 },
-  headerRight:{ flexDirection: 'row', alignItems: 'center', gap: 12 },
+  greeting: { fontSize: 16, fontWeight: '700', marginBottom: 2, color: '#fff' },
+  brand: { fontSize: Math.min(32, SCREEN_W * 0.085), fontWeight: '900', letterSpacing: -0.5 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBtn: {
     width: 46, height: 46, borderRadius: 23,
     justifyContent: 'center', alignItems: 'center',
@@ -485,8 +485,8 @@ const s = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     paddingHorizontal: 24, marginBottom: 24,
   },
-  actionBtn:   { alignItems: 'center', gap: 8 },
-  actionIcon:  {
+  actionBtn: { alignItems: 'center', gap: 8 },
+  actionIcon: {
     width: 62, height: 62, borderRadius: 20,
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
