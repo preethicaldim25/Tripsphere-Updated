@@ -37,6 +37,11 @@ class TripCreate(BaseModel):
     travelers: int = 1
     accommodation: Optional[str] = None
     notes: Optional[str] = None
+    status: Optional[str] = "upcoming"
+    is_confirmed: Optional[bool] = True
+    is_draft: Optional[bool] = False
+    transport_preferences: Optional[str] = None
+    metadata: Optional[Dict] = None
     itinerary: List[ItineraryDay] = []
 
 class TripUpdate(BaseModel):
@@ -48,7 +53,14 @@ class TripUpdate(BaseModel):
     end_date: Optional[str] = None
     total_budget: Optional[float] = None
     budget_breakdown: Optional[Dict[str, float]] = None
+    travelers: Optional[int] = None
+    accommodation: Optional[str] = None
     notes: Optional[str] = None
+    status: Optional[str] = None
+    itinerary: Optional[List[ItineraryDay]] = None
+    transport_preferences: Optional[str] = None
+    is_confirmed: Optional[bool] = None
+    is_draft: Optional[bool] = None
 
 class TripResponse(BaseModel):
     id: str
@@ -67,12 +79,33 @@ class TripResponse(BaseModel):
     travelers: int = 1
     accommodation: Optional[str] = None
     notes: Optional[str] = None
+    status: Optional[str] = "upcoming"
+    is_confirmed: bool = True
+    is_draft: bool = False
+    transport_preferences: Optional[str] = None
+    metadata: Optional[Dict] = None
     itinerary: List[ItineraryDay] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+def calculate_trip_status(trip: dict) -> str:
+    status = trip.get("status", "upcoming")
+    if status == "draft" or trip.get("is_draft") or not trip.get("is_confirmed", True):
+        return "draft"
+
+    end_date_str = trip.get("end_date")
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+            # If current date is past the end date, it is completed!
+            if datetime.now() > end_date:
+                return "completed"
+        except:
+            pass
+    return "upcoming"
 
 @router.get("", response_model=List[TripResponse])
 async def get_trips(current_user_id: str = Depends(get_current_user)):
@@ -94,6 +127,9 @@ async def get_trips(current_user_id: str = Depends(get_current_user)):
             if "end_date" not in trip: trip["end_date"] = datetime.now().strftime("%Y-%m-%d")
             if "created_at" not in trip: trip["created_at"] = datetime.now()
             if "updated_at" not in trip: trip["updated_at"] = datetime.now()
+            
+            # Auto-calculate status
+            trip["status"] = calculate_trip_status(trip)
             
             # 1. Populate Destination
             trip["destination_details"] = None
@@ -142,6 +178,11 @@ async def create_trip(
             "travelers": trip_data.travelers,
             "accommodation": trip_data.accommodation,
             "notes": trip_data.notes,
+            "status": trip_data.status or "upcoming",
+            "is_confirmed": trip_data.is_confirmed if trip_data.is_confirmed is not None else True,
+            "is_draft": trip_data.is_draft if trip_data.is_draft is not None else False,
+            "transport_preferences": trip_data.transport_preferences,
+            "metadata": trip_data.metadata,
             "itinerary": [day.dict() for day in trip_data.itinerary] if trip_data.itinerary else [],
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
@@ -173,6 +214,11 @@ async def get_trip(
     
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Ensure fallbacks and calculate dynamic status
+    if "name" not in trip: trip["name"] = trip.get("title", "Untitled Trip")
+    if "budget" not in trip: trip["budget"] = trip.get("total_budget", 0.0)
+    trip["status"] = calculate_trip_status(trip)
     
     # 1. Populate Destination
     if "destination_id" in trip:
@@ -222,6 +268,8 @@ async def update_trip(
         update_data["name"] = update_data.pop("title")
     if "total_budget" in update_data:
         update_data["budget"] = update_data.pop("total_budget")
+    if "itinerary" in update_data and update_data["itinerary"] is not None:
+        update_data["itinerary"] = [day.dict() for day in update_data["itinerary"]]
 
     update_data["updated_at"] = datetime.utcnow()
     
@@ -237,6 +285,36 @@ async def update_trip(
         raise HTTPException(status_code=404, detail="Trip not found")
     
     return {"message": "Trip updated successfully"}
+
+@router.post("/{trip_id}/duplicate", response_model=TripResponse)
+async def duplicate_trip(
+    trip_id: str,
+    current_user_id: str = Depends(get_current_user)
+):
+    collection = get_collection("trips")
+    try:
+        original = await collection.find_one({"_id": ObjectId(trip_id), "user_id": current_user_id})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid trip ID")
+        
+    if not original:
+        raise HTTPException(status_code=404, detail="Trip not found")
+        
+    new_trip = original.copy()
+    new_trip.pop("_id", None)
+    new_trip["name"] = f"Copy of {original.get('name', 'Untitled Trip')}"
+    new_trip["created_at"] = datetime.utcnow()
+    new_trip["updated_at"] = datetime.utcnow()
+    
+    # Duplicated trips start as editable drafts
+    new_trip["status"] = "draft"
+    new_trip["is_draft"] = True
+    new_trip["is_confirmed"] = False
+    
+    result = await collection.insert_one(new_trip)
+    new_trip["id"] = str(result.inserted_id)
+    new_trip["used_budget"] = 0.0
+    return new_trip
 
 @router.delete("/{trip_id}", response_model=dict)
 async def delete_trip(

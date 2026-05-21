@@ -1,3 +1,10 @@
+# Force UTF-8 output so emoji print()s don't crash on Windows cp1252 consoles
+import sys, io
+if hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'buffer'):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import auth, trips, expenses, destinations, ai
@@ -65,6 +72,17 @@ app.include_router(destinations.places_router, prefix="/api")
 app.include_router(trips.router, prefix="/api")
 app.include_router(expenses.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
+
+# Direct alias route for /api/road-trip-intelligence to prevent any 404 prefix mismatch
+from routers.ai import RoadTripRequest, get_road_trip_intelligence
+from auth import get_current_user
+from fastapi import Depends
+
+@app.post("/api/road-trip-intelligence")
+async def get_road_trip_intelligence_alias(request: RoadTripRequest, current_user_id: str = Depends(get_current_user)):
+    print("[ALIAS ROUTE] Intercepted call to direct /api/road-trip-intelligence - Proxying to get_road_trip_intelligence")
+    return await get_road_trip_intelligence(request, current_user_id)
+
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))

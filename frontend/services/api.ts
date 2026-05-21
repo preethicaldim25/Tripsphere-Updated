@@ -98,6 +98,10 @@ export interface Trip {
   travelers: number;
   accommodation?: string;
   notes?: string;
+  status?: 'draft' | 'upcoming' | 'completed';
+  is_confirmed?: boolean;
+  is_draft?: boolean;
+  transport_preferences?: string;
   itinerary?: DayItinerary[];
   created_at: string;
   updated_at: string;
@@ -115,6 +119,10 @@ export interface TripCreate {
   travelers: number;
   accommodation?: string;
   notes?: string;
+  status?: string;
+  is_confirmed?: boolean;
+  is_draft?: boolean;
+  transport_preferences?: string;
   itinerary?: DayItinerary[];
 }
 
@@ -257,45 +265,75 @@ const apiClient = async <T>(
 
   // ✅ Defensive check for API_URL
   const baseUrl = API_URL || '';
-  console.log(`🌐 API_URL: ${baseUrl}`);
   
   // ✅ Robust URL construction
   const safeBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   const safeEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const fullUrl = `${safeBaseUrl}${safeEndpoint}`;
   
-  console.log(`📡 API Request: ${fullUrl}`);
-
   const token = await getToken();
 
-  const headers: Record<string, string> = {
+  // ✅ Production Safety: Detect if we are in a development or ngrok environment
+  const isDevelopmentOrNgrok = 
+    (typeof __DEV__ !== 'undefined' && __DEV__) || 
+    safeBaseUrl.includes('ngrok') || 
+    safeBaseUrl.includes('localhost') || 
+    safeBaseUrl.includes('127.0.0.1') ||
+    safeBaseUrl.includes('192.168.');
+
+  // Convert any format of headers to a plain Record
+  let requestHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Bypass-Tunnel-Reminder': 'true',
-    'ngrok-skip-browser-warning': 'true',
   };
 
+  if (isDevelopmentOrNgrok) {
+    requestHeaders['Bypass-Tunnel-Reminder'] = 'true';
+    requestHeaders['ngrok-skip-browser-warning'] = 'true';
+  }
+
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    requestHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
+  // ✅ Safely merge options.headers (supporting Headers object, Array, or plain Record)
+  if (options.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        requestHeaders[key] = value;
+      });
+    } else if (Array.isArray(options.headers)) {
+      options.headers.forEach(([key, value]) => {
+        requestHeaders[key] = value;
+      });
+    } else {
+      // It's a plain object
+      requestHeaders = {
+        ...requestHeaders,
+        ...options.headers as Record<string, string>,
+      };
+    }
   }
 
   const config: RequestInit = {
     ...options,
-    headers: {
-      ...headers,
-      ...(options.headers as Record<string, string> || {}),
-    },
+    headers: requestHeaders,
   };
 
   try {
-    console.log(`[AUDIT API] ▶️ Starting fetch to ${safeEndpoint}`);
+    // ✅ Defensive Logging: Log final request URL, response status, and if ngrok bypass header is attached
+    const hasNgrokBypass = !!requestHeaders['ngrok-skip-browser-warning'];
+    console.log(`[AUDIT API] ▶️ Starting fetch to: ${fullUrl}`);
+    console.log(`[AUDIT API] ℹ️ ngrok bypass header attached: ${hasNgrokBypass ? 'YES' : 'NO'}`);
+    
     const response = await fetch(fullUrl, config);
-    console.log(`[AUDIT API] ◀️ Received response from ${safeEndpoint} - Status: ${response.status}`);
+    
+    console.log(`[AUDIT API] ◀️ Received response from: ${fullUrl} - Status: ${response.status} ${response.statusText}`);
     const parsed = await handleResponse(response) as Promise<T>;
-    console.log(`[AUDIT API] ✅ Successfully parsed response from ${safeEndpoint}`);
+    console.log(`[AUDIT API] ✅ Successfully parsed response from: ${fullUrl}`);
     return parsed;
   } catch (error) {
-    console.error(`[AUDIT API] ❌ Network error on ${safeEndpoint}:`, error);
+    console.error(`[AUDIT API] ❌ Network error on: ${fullUrl}:`, error);
     throw error;
   }
 };
@@ -421,6 +459,11 @@ export const tripsAPI = {
     apiClient<{ message: string }>(`/trips/${id}`, {
       method: 'DELETE',
     }),
+
+  duplicate: (id: string): Promise<Trip> =>
+    apiClient<Trip>(`/trips/${id}/duplicate`, {
+      method: 'POST',
+    }),
 };
 
 export const expensesAPI = {
@@ -455,9 +498,20 @@ export const aiAPI = {
     budgetType: string;
     travelers: number;
     pace: string;
+    accommodation?: string;
+    stops?: string[];
     notes?: string;
   }): Promise<any> =>
     apiClient('/ai/ai-trip-plan', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  generateRoadTripIntelligence: (data: {
+    origin: string;
+    destination: string;
+  }): Promise<any> =>
+    apiClient('/ai/road-trip-intelligence', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

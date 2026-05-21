@@ -35,6 +35,7 @@ type TripContextValue = {
   createTrip: (tripData: Partial<Trip>) => Promise<void>;
   updateTrip: (id: string, tripData: Partial<Trip>) => Promise<void>;
   deleteTrip: (id: string) => Promise<void>;
+  duplicateTrip: (id: string) => Promise<void>;
   refreshTrips: () => Promise<void>;
 };
 
@@ -133,6 +134,18 @@ export const TripProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  const duplicateTrip = useCallback(async (id: string) => {
+    setLoading(true);
+    try {
+      await tripsAPI.duplicate(id);
+      await fetchTrips();
+    } catch (err: any) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchTrips]);
+
   return (
     <TripContext.Provider value={{
       trips,
@@ -143,6 +156,7 @@ export const TripProvider = ({ children }: { children: React.ReactNode }) => {
       createTrip,
       updateTrip,
       deleteTrip,
+      duplicateTrip,
       refreshTrips: fetchTrips
     }}>
       {children}

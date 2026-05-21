@@ -294,19 +294,39 @@ export default function HomeScreen() {
   const [happeningNow, setHappeningNow] = useState(FALLBACK_CARDS);
   const [aiPicks, setAiPicks] = useState(FALLBACK_CARDS.slice().reverse());
   const [popularCities, setPopularCities] = useState(FALLBACK_CARDS.slice(0, 4));
+  
+  const [allDestinations, setAllDestinations] = useState<any[]>([]);
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const themeBounce = useSharedValue(1);
   const themeBounceStyle = useAnimatedStyle(() => ({ transform: [{ scale: themeBounce.value }] }));
+
+  // ── Smart Destination Matching ──
+  const filteredResults = useMemo(() => {
+    if (!search.trim()) return [];
+    const query = search.toLowerCase();
+    return allDestinations.filter(d => 
+      d.name?.toLowerCase().includes(query) ||
+      d.district?.toLowerCase().includes(query) ||
+      d.category?.toLowerCase().includes(query)
+    ).slice(0, 5);
+  }, [search, allDestinations]);
 
   // ── Load API data (non-blocking — fallback already set) ──
   useEffect(() => {
     const load = async () => {
       setApiLoading(true);
       try {
-        const [exploreRes, featuredRes] = await Promise.allSettled([
+        const [exploreRes, featuredRes, allDestsRes] = await Promise.allSettled([
           destinationService.getExploreData(),
           destinationService.getFeatured(),
+          destinationService.getAll(),
         ]);
+
+        if (allDestsRes.status === 'fulfilled') {
+          setAllDestinations(allDestsRes.value || []);
+        }
 
         if (featuredRes.status === 'fulfilled' && featuredRes.value?.length) {
           setHeroData(
@@ -389,18 +409,71 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ── SEARCH ── */}
-        <View style={[s.searchBar, { backgroundColor: '#1A181C', borderColor: 'transparent' }]}>
-          <Ionicons name="search-outline" size={20} color="#777" />
-          <TextInput
-            style={[s.searchInput, { color: colors.text }]}
-            placeholder="Search destinations in Tamil Nadu..."
-            placeholderTextColor="#777"
-            value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={() => nav(`/search?q=${encodeURIComponent(search)}` as any)}
-            returnKeyType="search"
-          />
+        {/* ── SEARCH AREA ── */}
+        <View style={[s.searchWrapper, { zIndex: 100, elevation: 10 }]}>
+          <View style={[s.searchBar, { backgroundColor: '#1A181C', borderColor: 'transparent', marginBottom: 0 }]}>
+            <Ionicons name="search-outline" size={20} color="#777" />
+            <TextInput
+              ref={inputRef}
+              style={[s.searchInput, { color: colors.text }]}
+              placeholder="Search destinations in Tamil Nadu..."
+              placeholderTextColor="#777"
+              value={search}
+              onChangeText={setSearch}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => {
+                setTimeout(() => setIsFocused(false), 200);
+              }}
+              onSubmitEditing={() => {
+                inputRef.current?.blur();
+                nav(`/search?q=${encodeURIComponent(search)}` as any);
+              }}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => {
+                setSearch('');
+                inputRef.current?.blur();
+              }}>
+                <Ionicons name="close-circle" size={20} color="#777" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Dynamic Search Dropdown Overlay with proper conditional rendering (avoiding display:none / opacity hides) */}
+          {isFocused && search.trim().length > 0 && (
+            <View style={[s.dropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {filteredResults.length > 0 ? (
+                filteredResults.map((item) => (
+                  <TouchableOpacity
+                    key={item.id || item._id}
+                    style={s.dropdownItem}
+                    onPress={() => {
+                      inputRef.current?.blur();
+                      setIsFocused(false);
+                      setSearch('');
+                      goTo(item.id || item._id);
+                    }}
+                  >
+                    <View style={s.dropdownItemContent}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={[s.dropdownItemName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                        <Text style={[s.dropdownItemSub, { color: colors.textSecondary }]} numberOfLines={1}>{item.category} • {item.district || 'Tamil Nadu'}</Text>
+                      </View>
+                      <View style={s.dropdownRating}>
+                        <Ionicons name="star" size={12} color="#FFD700" />
+                        <Text style={[s.dropdownRatingText, { color: colors.text }]}>{item.rating || '4.5'}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={s.dropdownEmpty}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>No wonders found matching "{search}"</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* ── HERO CAROUSEL ── */}
@@ -468,13 +541,63 @@ const s = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1,
   },
+  searchWrapper: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    position: 'relative',
+    zIndex: 100,
+  },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    marginHorizontal: 20, marginBottom: 24,
     paddingHorizontal: 16, paddingVertical: 16,
     borderRadius: 16, borderWidth: 1,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
+  },
+  dropdown: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 10,
+    zIndex: 999,
+  },
+  dropdownItem: {
+    padding: 12,
+    borderRadius: 10,
+  },
+  dropdownItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownItemName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  dropdownItemSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  dropdownRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dropdownRatingText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  dropdownEmpty: {
+    padding: 16,
+    alignItems: 'center',
   },
   searchInput: { flex: 1, fontSize: 15, fontWeight: '500', padding: 0 },
   chip: {

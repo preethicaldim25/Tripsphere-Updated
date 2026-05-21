@@ -51,7 +51,7 @@ async def register(user_data: UserCreate):
     clean_password = user_data.password.strip()
     clean_name = user_data.name.strip()
     
-    print(f"📝 Register attempt: '{clean_email}'")
+    print(f"[AUTH] Register attempt: '{clean_email}'")
     users_collection = get_collection("users")
     
     # Check if user exists (case-insensitive)
@@ -73,7 +73,7 @@ async def register(user_data: UserCreate):
     }
     
     result = await users_collection.insert_one(user)
-    print(f"✅ User registered with id: {result.inserted_id}")
+    print(f"[AUTH] User registered with id: {result.inserted_id}")
     
     # Create token
     token = create_access_token({
@@ -99,7 +99,7 @@ async def login(user_data: UserLogin):
         clean_email = user_data.email.strip().lower()
         clean_password = user_data.password.strip()
         
-        print(f"🔑 Login attempt: '{clean_email}' (len: {len(clean_email)})")
+        print(f"[AUTH] Login attempt: '{clean_email}' (len: {len(clean_email)})")
         users_collection = get_collection("users")
         
         # Find user
@@ -109,25 +109,25 @@ async def login(user_data: UserLogin):
             user = await users_collection.find_one({"email": {"$regex": f"^{clean_email}$", "$options": "i"}})
             
         if not user:
-            print(f"❌ User not found in DB: '{clean_email}'")
+            print(f"[AUTH] User not found in DB: '{clean_email}'")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password"
             )
         
         # Verify password
-        print(f"👀 Found user in DB with email: '{user['email']}'. Checking password...")
+        print(f"[AUTH] Found user in DB with email: '{user['email']}'. Checking password...")
         is_valid_pwd = verify_password(clean_password, user.get("password", "")) if user.get("password") else False
-        print(f"🔒 Password verification result: {is_valid_pwd}")
+        print(f"[AUTH] Password verification result: {is_valid_pwd}")
         
         if not is_valid_pwd:
-            print(f"❌ Invalid password for: '{clean_email}'")
+            print(f"[AUTH] Invalid password for: '{clean_email}'")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password"
             )
         
-        print(f"✅ Login successful: {user['email']}")
+        print(f"[AUTH] Login successful: {user['email']}")
         
         # Create token
         token = create_access_token({
@@ -151,8 +151,8 @@ async def login(user_data: UserLogin):
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
-        print(f"🔥 CRASH IN LOGIN: {str(e)}")
-        print(f"🔥 TRACE: {error_trace}")
+        print(f"[AUTH] CRASH IN LOGIN: {str(e)}")
+        print(f"[AUTH] TRACE: {error_trace}")
         
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

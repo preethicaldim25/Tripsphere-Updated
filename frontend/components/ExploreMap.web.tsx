@@ -65,13 +65,12 @@ const ExploreMap = ({
             const defaultZoom: number = zoom ?? 7;
 
             const map = L.map(containerRef.current, {
-                zoomControl: true,
+                zoomControl: false,
                 scrollWheelZoom: true,
-                attributionControl: true,
+                attributionControl: false,
             }).setView(defaultCenter, defaultZoom);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(map);
 
@@ -134,11 +133,16 @@ const ExploreMap = ({
             }
             usedCoords.add(coordKey);
 
-            // 1. Create a marker (pin)
-            const marker = L.marker([lat, lng]).addTo(lg);
+            // Create circular glowing marker div
+            const customIcon = L.divIcon({
+                className: 'custom-glow-pin',
+                html: `<div class="pin-ring"></div><div class="pin-dot"></div><div class="pin-label">${p.name.split(' ')[0]}</div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
 
-            // 2. Add Popup
-            marker.bindPopup(`Stop ${idx + 1}: ${p.name || 'Activity'}`);
+            // 1. Create a marker (pin)
+            const marker = L.marker([lat, lng], { icon: customIcon }).addTo(lg);
 
             marker.on('click', () => {
                 if (onPinSelect) onPinSelect(p);
@@ -154,8 +158,9 @@ const ExploreMap = ({
 
             if (latlngs.length > 1) {
                 polylineRef.current = L.polyline(latlngs as any, {
-                    color: 'blue',
-                    weight: 4
+                    color: '#6B4EFF',
+                    weight: 4,
+                    opacity: 0.8
                 }).addTo(lg); // Adding to layerGroup so it gets cleared too
                 
                 // 9. AUTO ZOOM
@@ -178,33 +183,51 @@ const ExploreMap = ({
                 ref={containerRef}
                 style={{
                     width: '100%',
-                    height: '500px',
-                    backgroundColor: isDarkMode ? '#1a1a2e' : '#f8f9ff',
+                    height: '350px',
+                    backgroundColor: '#0a0a16',
                 }}
             />
 
+            {/* Top-Left Header Overlay */}
+            <View style={styles.textOverlay} pointerEvents="none">
+                <Text style={styles.overlayTitle}>Tamil Nadu</Text>
+                <Text style={styles.overlaySubtitle}>Explore top places</Text>
+            </View>
+
             {mapReady && (
-                <View style={styles.buttonContainer}>
+                <>
+                    {/* Bottom-Left Re-center Button */}
                     <TouchableOpacity
-                        style={styles.mapBtn}
-                        onPress={() => setIsDarkMode(!isDarkMode)}
-                    >
-                        <Ionicons 
-                            name={isDarkMode ? "sunny" : "moon"} 
-                            size={22} 
-                            color="#6B4EFF" 
-                        />
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                        style={styles.mapBtn}
+                        style={styles.reCenterBtn}
                         onPress={() => {
                             if (mapRef.current) mapRef.current.setView([11.1271, 78.6569], 7);
                         }}
                     >
-                        <Ionicons name="locate" size={22} color="#6B4EFF" />
+                        <Ionicons name="locate" size={14} color="#fff" />
+                        <Text style={styles.reCenterText}>Re-center</Text>
                     </TouchableOpacity>
-                </View>
+
+                    {/* Bottom-Right Zoom Controls */}
+                    <View style={styles.zoomContainer}>
+                        <TouchableOpacity
+                            style={styles.zoomBtn}
+                            onPress={() => {
+                                if (mapRef.current) mapRef.current.zoomIn();
+                            }}
+                        >
+                            <Ionicons name="add" size={16} color="#fff" />
+                        </TouchableOpacity>
+                        <View style={styles.zoomDivider} />
+                        <TouchableOpacity
+                            style={styles.zoomBtn}
+                            onPress={() => {
+                                if (mapRef.current) mapRef.current.zoomOut();
+                            }}
+                        >
+                            <Ionicons name="remove" size={16} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+                </>
             )}
 
             <style>{`
@@ -212,61 +235,123 @@ const ExploreMap = ({
                     height: 100% !important; 
                     width: 100% !important; 
                     z-index: 1; 
-                    border-radius: 20px; 
-                    background: ${isDarkMode ? '#1a1a2e' : '#f0f0f0'} !important;
+                    border-radius: 24px; 
+                    background: #080810 !important;
                 }
                 .leaflet-tile { 
-                    filter: ${isDarkMode ? 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)' : 'none'}; 
+                    filter: invert(100%) hue-rotate(190deg) brightness(85%) contrast(110%) saturate(140%); 
                 }
-                .marker-number-label {
-                    background: transparent !important;
-                    border: none !important;
-                    box-shadow: none !important;
-                    color: #ffffff !important;
-                    font-weight: 900 !important;
-                    font-size: 12px !important;
-                    text-align: center !important;
-                    pointer-events: none !important;
+                .custom-glow-pin {
+                    position: relative;
                 }
-                .marker-label-tooltip {
-                    background: ${isDarkMode ? 'rgba(30, 30, 50, 0.9)' : 'rgba(255, 255, 255, 0.9)'} !important;
-                    border: 1px solid #6B4EFF !important;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-                    color: ${isDarkMode ? '#ffffff' : '#1a1a1a'} !important;
-                    font-weight: 800 !important;
-                    padding: 4px 10px !important;
-                    border-radius: 8px !important;
-                    font-size: 11px !important;
-                    white-space: nowrap !important;
+                .pin-ring {
+                    width: 16px;
+                    height: 16px;
+                    background: rgba(107, 78, 255, 0.4);
+                    border: 1px solid rgba(107, 78, 255, 0.8);
+                    border-radius: 50%;
+                    animation: pin-pulse 1.5s infinite;
+                    position: absolute;
+                    top: 2px;
+                    left: 2px;
                 }
-                .leaflet-tooltip-top:before { border-top-color: #6B4EFF !important; }
-                .leaflet-tooltip-center { margin-top: 0 !important; }
+                .pin-dot {
+                    width: 8px;
+                    height: 8px;
+                    background: #6B4EFF;
+                    border: 1.5px solid #ffffff;
+                    border-radius: 50%;
+                    box-shadow: 0 0 10px #6B4EFF;
+                    position: absolute;
+                    top: 6px;
+                    left: 6px;
+                }
+                .pin-label {
+                    position: absolute;
+                    left: 18px;
+                    top: 2px;
+                    color: #ffffff;
+                    font-size: 11px;
+                    font-weight: 800;
+                    text-shadow: 0 1px 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9);
+                    white-space: nowrap;
+                }
+                @keyframes pin-pulse {
+                    0% { transform: scale(0.8); opacity: 1; }
+                    100% { transform: scale(1.6); opacity: 0; }
+                }
             `}</style>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, width: '100%', minHeight: 350, backgroundColor: '#1a1a2e' },
-    buttonContainer: {
+    container: { flex: 1, width: '100%', height: 350, backgroundColor: '#080810', borderRadius: 24, overflow: 'hidden' },
+    textOverlay: {
         position: 'absolute',
-        bottom: 24,
-        right: 24,
+        top: 20,
+        left: 20,
         zIndex: 1000,
-        gap: 12,
     },
-    mapBtn: {
-        backgroundColor: '#fff',
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+    overlayTitle: {
+        color: '#ffffff',
+        fontSize: 20,
+        fontWeight: 'bold',
+        textShadowColor: 'rgba(0,0,0,0.8)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+    },
+    overlaySubtitle: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 12,
+        fontWeight: '500',
+        marginTop: 2,
+        textShadowColor: 'rgba(0,0,0,0.8)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+    },
+    reCenterBtn: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        zIndex: 1000,
+        backgroundColor: 'rgba(12, 12, 26, 0.75)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        gap: 6,
+    },
+    reCenterText: {
+        color: '#ffffff',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    zoomContainer: {
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        zIndex: 1000,
+        backgroundColor: 'rgba(12, 12, 26, 0.75)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 14,
+        alignItems: 'center',
+        width: 36,
+    },
+    zoomBtn: {
+        width: 34,
+        height: 34,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 6,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
+    },
+    zoomDivider: {
+        width: '70%',
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
 });
 

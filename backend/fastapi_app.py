@@ -207,6 +207,15 @@ async def delete_trip(trip_id: str, user_id: str = Depends(get_current_user)):
 # Include Router with prefix
 app.include_router(trips_router, prefix="/api")
 
+# Also include the AI router and direct road-trip-intelligence route in fastapi_app.py to avoid 404s
+from routers import ai
+app.include_router(ai.router, prefix="/api")
+
+@app.post("/api/road-trip-intelligence")
+async def get_road_trip_intelligence_alias(request: ai.RoadTripRequest, current_user_id: str = Depends(get_current_user)):
+    return await ai.get_road_trip_intelligence(request, current_user_id)
+
+
 if __name__ == "__main__":
     import uvicorn
     import os
