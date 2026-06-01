@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,98 +10,89 @@ import {
   Dimensions,
   RefreshControl,
   Platform,
-  Animated,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useTheme } from '../../context/themecontext';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { destinationsAPI, authAPI, Destination } from '../../services/api';
 import ExploreMap from '../../components/ExploreMap';
-import { images, getDestinationImage, CATEGORY_THEMES } from '../../constants/images';
 import { SmartImage } from '../../components/ui/SmartImage';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = width * 0.72;
 
 const FALLBACK_PLACES: any[] = [
-  { id: 'Chennai', name: 'Chennai', district: 'Chennai', category: 'beach', lat: 13.0827, lng: 80.2707, rating: 4.6, weatherHint: '☀️ 31°C', vibe: 'COASTAL' },
-  { id: 'Vellore', name: 'Vellore', district: 'Vellore', category: 'heritage', lat: 12.9165, lng: 79.1325, rating: 4.5, weatherHint: '☀️ 30°C', vibe: 'HERITAGE' },
-  { id: 'Pondicherry', name: 'Pondicherry', district: 'Pondicherry', category: 'beach', lat: 11.9416, lng: 79.8083, rating: 4.7, weatherHint: '🌤️ 29°C', vibe: 'PEACEFUL' },
-  { id: 'Coimbatore', name: 'Coimbatore', district: 'Coimbatore', category: 'nature', lat: 11.0168, lng: 76.9558, rating: 4.8, weatherHint: '☀️ 28°C', vibe: 'NATURE' },
-  { id: 'Tiruchirappalli', name: 'Tiruchirappalli', district: 'Tiruchirappalli', category: 'heritage', lat: 10.7905, lng: 78.7047, rating: 4.6, weatherHint: '☀️ 32°C', vibe: 'HERITAGE' },
-  { id: 'Madurai', name: 'Madurai', district: 'Madurai', category: 'temple', lat: 9.9252, lng: 78.1198, rating: 4.9, weatherHint: '☀️ 33°C', vibe: 'CULTURAL' },
-  { id: 'Rameswaram', name: 'Rameswaram', district: 'Rameswaram', category: 'beach', lat: 9.2876, lng: 79.3129, rating: 4.8, weatherHint: '🌤️ 30°C', vibe: 'COASTAL_BRIDGE' },
-  { id: 'Kodaikanal', name: 'Kodaikanal', district: 'Dindigul', category: 'hill station', lat: 10.2381, lng: 77.4892, rating: 4.7, weatherHint: '☁️ 22°C', vibe: 'PEACEFUL' },
-  { id: 'Thanjavur', name: 'Thanjavur', district: 'Thanjavur', category: 'heritage', lat: 10.7870, lng: 79.1378, rating: 4.6, weatherHint: '☀️ 28°C', vibe: 'CULTURAL' }
+  { id: 'Chennai',        name: 'Chennai',        district: 'Chennai',        category: 'beach',       lat: 13.0827, lng: 80.2707, rating: 4.6, weatherHint: '☀️ 31°C', vibe: 'COASTAL' },
+  { id: 'Vellore',        name: 'Vellore',        district: 'Vellore',        category: 'heritage',    lat: 12.9165, lng: 79.1325, rating: 4.5, weatherHint: '☀️ 30°C', vibe: 'HERITAGE' },
+  { id: 'Pondicherry',    name: 'Pondicherry',    district: 'Pondicherry',    category: 'beach',       lat: 11.9416, lng: 79.8083, rating: 4.7, weatherHint: '🌤️ 29°C', vibe: 'PEACEFUL' },
+  { id: 'Coimbatore',     name: 'Coimbatore',     district: 'Coimbatore',     category: 'nature',      lat: 11.0168, lng: 76.9558, rating: 4.8, weatherHint: '☀️ 28°C', vibe: 'NATURE' },
+  { id: 'Tiruchirappalli',name: 'Tiruchirappalli',district: 'Tiruchirappalli',category: 'heritage',    lat: 10.7905, lng: 78.7047, rating: 4.6, weatherHint: '☀️ 32°C', vibe: 'HERITAGE' },
+  { id: 'Madurai',        name: 'Madurai',        district: 'Madurai',        category: 'temple',      lat:  9.9252, lng: 78.1198, rating: 4.9, weatherHint: '☀️ 33°C', vibe: 'CULTURAL' },
+  { id: 'Rameswaram',     name: 'Rameswaram',     district: 'Rameswaram',     category: 'beach',       lat:  9.2876, lng: 79.3129, rating: 4.8, weatherHint: '🌤️ 30°C', vibe: 'COASTAL' },
+  { id: 'Kodaikanal',     name: 'Kodaikanal',     district: 'Dindigul',       category: 'hill station',lat: 10.2381, lng: 77.4892, rating: 4.7, weatherHint: '☁️ 22°C', vibe: 'PEACEFUL' },
+  { id: 'Thanjavur',      name: 'Thanjavur',      district: 'Thanjavur',      category: 'heritage',    lat: 10.7870, lng: 79.1378, rating: 4.6, weatherHint: '☀️ 28°C', vibe: 'CULTURAL' },
 ];
 
 const CATEGORIES = [
-  { id: 'All', name: 'All', icon: 'grid-outline' },
-  { id: 'Peace', name: 'Peace', icon: 'leaf-outline' },
-  { id: 'Budget', name: 'Budget', icon: 'pricetag-outline' },
-  { id: 'Nature', name: 'Nature', icon: 'mountain-outline' },
-  { id: 'Festivals', name: 'Festivals', icon: 'sparkles-outline' },
-  { id: 'Heritage', name: 'Heritage', icon: 'business-outline' },
+  { id: 'All',      name: 'All',      icon: 'apps-outline' as const },
+  { id: 'Peace',    name: 'Peace',    icon: 'leaf-outline' as const },
+  { id: 'Budget',   name: 'Budget',   icon: 'pricetag-outline' as const },
+  { id: 'Nature',   name: 'Nature',   icon: 'mountain-outline' as const },
+  { id: 'Festivals',name: 'Festivals',icon: 'sparkles-outline' as const },
+  { id: 'Heritage', name: 'Heritage', icon: 'business-outline' as const },
 ];
+
+// ─── Vibe → accent color map ─────────────────────────────────────────────────
+const VIBE_COLOR: Record<string, string> = {
+  COASTAL:  '#38BDF8',
+  HERITAGE: '#FBBF24',
+  PEACEFUL: '#4ADE80',
+  NATURE:   '#34D399',
+  CULTURAL: '#F472B6',
+  EXPLORE:  '#A78BFA',
+};
 
 export default function ExploreScreen() {
   const router = useRouter();
-  const { colors, theme } = useTheme();
 
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [exploreData, setExploreData] = useState<any>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [exploreMode, setExploreMode] = useState('All');
-  const [selectedPinPlace, setSelectedPinPlace] = useState<any>(null);
-  const [savedPlaces, setSavedPlaces] = useState<string[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [refreshing,       setRefreshing]        = useState(false);
+  const [searchQuery,      setSearchQuery]       = useState('');
+  const [exploreData,      setExploreData]       = useState<any>(null);
+  const [selectedCategory, setSelectedCategory]  = useState('All');
+  const [exploreMode,      setExploreMode]       = useState('All');
+  const [selectedPinPlace, setSelectedPinPlace]  = useState<any>(null);
+  const [savedPlaces,      setSavedPlaces]       = useState<string[]>([]);
 
+  // ─── Data fetching ───────────────────────────────────────────────────────
   const fetchData = async () => {
     try {
       setLoading(true);
       const data = await destinationsAPI.getExploreData();
-      console.log("🌍 Destinations API response (ExploreData):", data);
       setExploreData(data);
-
       try {
         const saved = await authAPI.getSavedPlaces();
         setSavedPlaces(saved.map((p: any) => p.id || p._id));
-      } catch (err) {
-        console.log('Error fetching saved places:', err);
-      }
+      } catch (_) {}
     } catch (error) {
-      console.error('Error fetching explore data:', error);
+      console.error('ExploreScreen fetch error:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
+  const onRefresh = () => { setRefreshing(true); fetchData(); };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchData();
-  };
-
+  // ─── Navigation ──────────────────────────────────────────────────────────
   const handlePlaceNavigation = (place: any) => {
     const targetId = place?.id || place?._id || place?.name;
-
-    if (!targetId) {
-      console.error("[Tripsphere] Navigation failed: No target ID", place);
-      return;
-    }
-
-    router.push({
-      pathname: "/destination/[id]",
-      params: { id: String(targetId), name: place?.name }
-    } as any);
+    if (!targetId) return;
+    router.push({ pathname: '/destination/[id]', params: { id: String(targetId), name: place?.name } } as any);
   };
 
+  // ─── Save toggle ─────────────────────────────────────────────────────────
   const toggleSave = async (placeId: string) => {
     try {
       if (savedPlaces.includes(placeId)) {
@@ -111,91 +102,27 @@ export default function ExploreScreen() {
         await authAPI.savePlace(placeId);
         setSavedPlaces(prev => [...prev, placeId]);
       }
-    } catch (err) {
-      console.log('Error toggling save:', err);
-    }
+    } catch (_) {}
   };
 
-  const renderPlaceCard = ({ item }: { item: any }) => {
-    if (!item) return null;
-    const isSaved = (savedPlaces || []).includes(item?.id || item?._id);
-    const vibeLabel = item?.vibe || item?.category?.toUpperCase() || 'EXPLORE';
-
-    return (
-      <TouchableOpacity
-        key={item?.id || item?._id || Math.random().toString()}
-        style={styles.card}
-        onPress={() => handlePlaceNavigation(item)}
-        activeOpacity={0.9}
-      >
-        <SmartImage
-          gradientOnly={true}
-          name={item?.name}
-          category={item?.category}
-          style={styles.cardImage}
-        />
-
-        <View style={styles.cardTopOverlay}>
-          <View style={styles.vibePill}>
-            <Text style={styles.vibePillText}>{vibeLabel}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.saveIcon}
-            onPress={() => toggleSave(item?.id || item?._id)}
-          >
-            <Ionicons name={isSaved ? "heart" : "heart-outline"} size={18} color={isSaved ? "#FF4B4B" : "#fff"} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.cardInfo}>
-          <Text style={styles.cardName} numberOfLines={1}>{item?.name}</Text>
-          <View style={styles.cardLocRow}>
-            <Ionicons name="location" size={12} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.cardLocText}>{item?.district || 'Tamil Nadu'}</Text>
-          </View>
-
-          <View style={styles.cardBottomRow}>
-            <View style={styles.ratingBadgeSimple}>
-              <Ionicons name="star" size={12} color="#FBBF24" />
-              <Text style={styles.ratingBadgeText}>{item.rating || '4.5'}</Text>
-            </View>
-            <View style={styles.weatherSmallBadge}>
-              <Ionicons name="cloud" size={12} color="rgba(255,255,255,0.6)" />
-              <Text style={styles.weatherSmallText}>{item?.weatherHint || '28°C'}</Text>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  if (loading && !refreshing) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#080810' }}>
-        <ActivityIndicator size="large" color="#6B4EFF" />
-        <Text style={{ color: '#ffffff', marginTop: 10, fontWeight: 'bold' }}>Syncing Live Travel Data...</Text>
-      </View>
-    );
-  }
-
+  // ─── Filter logic ─────────────────────────────────────────────────────────
   const getFilteredPlaces = () => {
     let base = [...FALLBACK_PLACES];
-    if (exploreData?.aiPicks) {
-      base = [...exploreData.aiPicks, ...base];
-    }
-
+    if (exploreData?.aiPicks) base = [...exploreData.aiPicks, ...base];
     if (exploreMode !== 'All') {
-      base = base.filter(p => p?.category?.toLowerCase().includes(exploreMode.toLowerCase()) || p?.vibe?.toLowerCase().includes(exploreMode.toLowerCase()));
+      base = base.filter(p =>
+        p?.category?.toLowerCase().includes(exploreMode.toLowerCase()) ||
+        p?.vibe?.toLowerCase().includes(exploreMode.toLowerCase())
+      );
     }
-
-    const unique = Array.from(new Set(base.map(p => p?.id || p?._id))).map(id => base.find(p => (p?.id || p?._id) === id)).filter(Boolean);
-    return unique;
+    return Array.from(new Set(base.map(p => p?.id || p?._id)))
+      .map(id => base.find(p => (p?.id || p?._id) === id))
+      .filter(Boolean);
   };
 
   const uniquePlaces = getFilteredPlaces();
 
-  // Mapped places to show coordinates in ExploreMap
-  const mappedPlaces = (FALLBACK_PLACES || [])
+  const mappedPlaces = FALLBACK_PLACES
     .map((d: any) => ({
       id: d?.id || d?._id,
       name: d?.name || 'Unknown',
@@ -206,359 +133,570 @@ export default function ExploreScreen() {
     }))
     .filter((p: any) => p.lat != null && p.lng != null);
 
+  // ─── Place card ───────────────────────────────────────────────────────────
+  const renderPlaceCard = (item: any) => {
+    if (!item) return null;
+    const isSaved   = (savedPlaces || []).includes(item?.id || item?._id);
+    const vibeLabel = item?.vibe || item?.category?.toUpperCase() || 'EXPLORE';
+    const vibeColor = VIBE_COLOR[vibeLabel] ?? '#A78BFA';
+
+    return (
+      <TouchableOpacity
+        key={item?.id || item?._id || Math.random().toString()}
+        style={styles.card}
+        onPress={() => handlePlaceNavigation(item)}
+        activeOpacity={0.88}
+      >
+        <SmartImage
+          gradientOnly={true}
+          name={item?.name}
+          category={item?.category}
+          style={StyleSheet.absoluteFillObject}
+        />
+
+        {/* Dark scrim */}
+        <LinearGradient
+          colors={['transparent', 'rgba(8,8,18,0.85)']}
+          style={StyleSheet.absoluteFillObject}
+          start={{ x: 0, y: 0.35 }}
+          end={{ x: 0, y: 1 }}
+        />
+
+        {/* Top row */}
+        <View style={styles.cardTopRow}>
+          <View style={[styles.vibePill, { borderColor: vibeColor + '55' }]}>
+            <View style={[styles.vibeDot, { backgroundColor: vibeColor }]} />
+            <Text style={[styles.vibePillText, { color: vibeColor }]}>{vibeLabel}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.saveIcon}
+            onPress={() => toggleSave(item?.id || item?._id)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name={isSaved ? 'heart' : 'heart-outline'}
+              size={16}
+              color={isSaved ? '#FF4B4B' : 'rgba(255,255,255,0.8)'}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom info */}
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardName} numberOfLines={1}>{item?.name}</Text>
+          <View style={styles.cardMeta}>
+            <View style={styles.metaItem}>
+              <Ionicons name="location" size={11} color="rgba(255,255,255,0.5)" />
+              <Text style={styles.metaText}>{item?.district || 'Tamil Nadu'}</Text>
+            </View>
+            <View style={styles.metaDivider} />
+            <View style={styles.metaItem}>
+              <Ionicons name="star" size={11} color="#FBBF24" />
+              <Text style={[styles.metaText, { color: '#FBBF24' }]}>{item?.rating ?? '4.5'}</Text>
+            </View>
+            <View style={styles.metaDivider} />
+            <Text style={styles.metaText}>{item?.weatherHint || '28°C'}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // ─── Loading state ────────────────────────────────────────────────────────
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color="#7C5CFF" />
+        <Text style={styles.loadingText}>Syncing live travel data…</Text>
+      </View>
+    );
+  }
+
+  // ─── Main render ──────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: '#080810' }}>
+    <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6B4EFF" />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C5CFF" />
+        }
       >
-        {/* 1. Explore Header */}
-        <View style={styles.headerContainer}>
-          <View>
+        {/* ── 1. Header ── */}
+        <View style={styles.header}>
+          <View style={styles.headerTextBlock}>
+            <Text style={styles.headerEyebrow}>Tamil Nadu</Text>
             <Text style={styles.headerTitle}>Explore</Text>
-            <Text style={styles.headerSubtitle}>Discover Tamil Nadu your way</Text>
           </View>
-          <TouchableOpacity style={styles.aiChatButton}>
-            <View style={styles.aiIconRing}>
-              <MaterialCommunityIcons name="robot" size={24} color="#fff" />
-              <View style={styles.aiOnlineDot} />
-            </View>
-          </TouchableOpacity>
+          <View style={styles.headerBadge}>
+            <View style={styles.liveDot} />
+            <Text style={styles.headerBadgeText}>Live</Text>
+          </View>
         </View>
 
-        {/* 2. Search & Filter Row */}
+        {/* ── 2. Search bar ── */}
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color="rgba(255, 255, 255, 0.4)" />
+            <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.35)" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search places, experiences, wonders..."
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              placeholder="Search places, temples, hills…"
+              placeholderTextColor="rgba(255,255,255,0.35)"
               value={searchQuery}
               onChangeText={setSearchQuery}
+              returnKeyType="search"
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.35)" />
+              </TouchableOpacity>
+            )}
           </View>
-          <TouchableOpacity style={styles.filterButton}>
-            <Ionicons name="options-outline" size={20} color="#fff" />
+          <TouchableOpacity style={styles.filterBtn}>
+            <Ionicons name="options-outline" size={19} color="#ffffff" />
           </TouchableOpacity>
         </View>
 
-        {/* 3. Horizontal Category Pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-          {CATEGORIES.map(category => {
-            const isActive = selectedCategory === category.id;
+        {/* ── 3. Category pills ── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pillsContainer}
+        >
+          {CATEGORIES.map(cat => {
+            const active = selectedCategory === cat.id;
             return (
               <TouchableOpacity
-                key={category.id}
-                style={[styles.categoryPill, isActive && styles.categoryPillActive]}
-                onPress={() => {
-                  setSelectedCategory(category.id);
-                  setExploreMode(category.id);
-                }}
+                key={cat.id}
+                style={[styles.pill, active && styles.pillActive]}
+                onPress={() => { setSelectedCategory(cat.id); setExploreMode(cat.id); }}
+                activeOpacity={0.8}
               >
-                <Ionicons name={category.icon as any} size={16} color={isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'} />
-                <Text style={[styles.categoryPillText, isActive && styles.categoryPillTextActive]}>
-                  {category.name}
+                <Ionicons
+                  name={cat.icon}
+                  size={14}
+                  color={active ? '#ffffff' : 'rgba(255,255,255,0.5)'}
+                />
+                <Text style={[styles.pillText, active && styles.pillTextActive]}>
+                  {cat.name}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        {/* 4. Interactive Map Card */}
-        <View style={styles.mapCardOuter}>
-          <ExploreMap
-            places={mappedPlaces}
-            onPinSelect={(place: Destination) => setSelectedPinPlace(place)}
-            theme="dark"
-          />
+        {/* ── 4. Map card ── */}
+        <View style={styles.mapSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Interactive Map</Text>
+            <View style={styles.sectionTag}>
+              <Text style={styles.sectionTagText}>Tamil Nadu</Text>
+            </View>
+          </View>
+          <View style={styles.mapCard}>
+            <ExploreMap
+              places={mappedPlaces}
+              onPinSelect={(place: Destination) => setSelectedPinPlace(place)}
+              theme="dark"
+            />
+          </View>
         </View>
 
-        {/* 5. AI Insight Banner */}
-        <View style={styles.aiBanner}>
-          <LinearGradient colors={['#3B14B0', '#6B4EFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.aiBannerGrad}>
-            <View style={styles.aiBannerContent}>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.aiBannerRef}>✦ AI INSIGHT</Text>
-                <Text style={styles.aiBannerText}>
-                  Kodaikanal is <Text style={{ fontWeight: 'bold' }}>peaceful today</Text>. Low crowd, perfect weather for a getaway!
+        {/* Selected map pin */}
+        {selectedPinPlace && (
+          <View style={styles.pinCard}>
+            <View style={styles.pinCardHeader}>
+              <Text style={styles.pinCardLabel}>Selected Destination</Text>
+              <TouchableOpacity onPress={() => setSelectedPinPlace(null)}>
+                <Ionicons name="close" size={18} color="rgba(255,255,255,0.5)" />
+              </TouchableOpacity>
+            </View>
+            {renderPlaceCard(selectedPinPlace)}
+          </View>
+        )}
+
+        {/* ── 5. AI Insight card ── */}
+        <View style={styles.aiSection}>
+          <LinearGradient
+            colors={['#2D1B8E', '#5B3FD9', '#7C5CFF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.aiCard}
+          >
+            {/* subtle mesh overlay */}
+            <View style={styles.aiMesh} />
+            <View style={styles.aiCardContent}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <View style={styles.aiLabelRow}>
+                  <Text style={styles.aiSpark}>✦</Text>
+                  <Text style={styles.aiLabel}>AI INSIGHT</Text>
+                </View>
+                <Text style={styles.aiText}>
+                  <Text style={styles.aiHighlight}>Kodaikanal</Text> is peaceful today — low crowd, perfect weather for a mountain getaway!
                 </Text>
               </View>
               <TouchableOpacity
-                style={styles.aiBannerBtn}
+                style={styles.aiBtn}
                 onPress={() => router.push({ pathname: '/plan-trip', params: { destination: 'Kodaikanal' } } as any)}
+                activeOpacity={0.85}
               >
-                <Text style={styles.aiBannerBtnText}>Plan Now</Text>
+                <Text style={styles.aiBtnText}>Plan Now</Text>
+                <Ionicons name="arrow-forward" size={13} color="#5B3FD9" />
               </TouchableOpacity>
             </View>
           </LinearGradient>
         </View>
 
-        {selectedPinPlace && (
-          <View style={styles.pinSelectionArea}>
-            <Text style={styles.sectionTitle}>Selected on Map</Text>
-            {renderPlaceCard({ item: selectedPinPlace })}
-            <TouchableOpacity style={styles.clearPin} onPress={() => setSelectedPinPlace(null)}>
-              <Text style={{ color: '#6B4EFF', fontWeight: 'bold' }}>Close Selection</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* 6. Recommended for you Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <Text style={styles.sectionTitle}>Recommended for you</Text>
+        {/* ── 6. Recommended ── */}
+        <View style={styles.recommendedSection}>
+          <View style={styles.recommendedHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.sectionTitle}>Recommended</Text>
               <View style={styles.aiBadge}>
                 <Text style={styles.aiBadgeText}>AI</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={() => {}}>
-              <Text style={styles.viewAllText}>View all ></Text>
+            <TouchableOpacity>
+              <Text style={styles.viewAll}>View all</Text>
             </TouchableOpacity>
           </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recommendedScroll}>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.cardsContainer}
+          >
             {uniquePlaces.map((item: any, idx: number) => (
-              <View key={item?.id || item?._id || `rec_${idx}`} style={{ marginRight: 16 }}>
-                {renderPlaceCard({ item })}
+              <View key={item?.id || item?._id || `rec_${idx}`} style={{ marginRight: 14 }}>
+                {renderPlaceCard(item)}
               </View>
             ))}
           </ScrollView>
         </View>
 
-        <View style={{ height: 100 }} />
+        {/* Bottom breathing room for tab bar */}
+        <View style={{ height: 110 }} />
       </ScrollView>
     </View>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  scrollContent: { paddingTop: 20 },
-  headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 15,
+  root: {
+    flex: 1,
+    backgroundColor: '#070710',
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
+  scrollContent: {
+    paddingTop: Platform.OS === 'ios' ? 56 : 36,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginTop: 2,
-  },
-  aiChatButton: {
-    shadowColor: '#6B4EFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  aiIconRing: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#121226',
-    borderWidth: 1.5,
-    borderColor: '#6B4EFF',
+
+  // ── Loading ──────────────────────────────────────────────────────────────
+  loadingScreen: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
+    backgroundColor: '#070710',
+    gap: 12,
   },
-  aiOnlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4CD964',
-    position: 'absolute',
-    top: 2,
-    right: 2,
+  loadingText: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+
+  // ── Header ───────────────────────────────────────────────────────────────
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingHorizontal: 22,
+    marginBottom: 22,
+  },
+  headerTextBlock: {
+    gap: 2,
+  },
+  headerEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 2.5,
+    color: '#7C5CFF',
+    textTransform: 'uppercase',
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: -0.5,
+  },
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76,217,100,0.1)',
     borderWidth: 1,
-    borderColor: '#121226',
+    borderColor: 'rgba(76,217,100,0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 6,
+    marginBottom: 4,
   },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4CD964',
+  },
+  headerBadgeText: {
+    color: '#4CD964',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+
+  // ── Search ───────────────────────────────────────────────────────────────
   searchRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 20,
+    paddingHorizontal: 22,
+    gap: 10,
+    marginBottom: 18,
   },
   searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#121226',
+    backgroundColor: '#111128',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    height: 50,
+    borderColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    height: 48,
+    gap: 10,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 10,
     color: '#ffffff',
     fontSize: 14,
+    fontWeight: '400',
   },
-  filterButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#121226',
+  filterBtn: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#111128',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
+    borderColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  categoriesScroll: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+
+  // ── Category pills ────────────────────────────────────────────────────────
+  pillsContainer: {
+    paddingHorizontal: 22,
+    paddingBottom: 2,
+    gap: 8,
+    marginBottom: 24,
   },
-  categoryPill: {
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 10,
+    borderColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     gap: 6,
   },
-  categoryPillActive: {
-    backgroundColor: 'rgba(107, 78, 255, 0.15)',
-    borderColor: '#6B4EFF',
+  pillActive: {
+    backgroundColor: 'rgba(124,92,255,0.18)',
+    borderColor: 'rgba(124,92,255,0.6)',
   },
-  categoryPillText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+  pillText: {
+    color: 'rgba(255,255,255,0.5)',
     fontSize: 13,
     fontWeight: '600',
   },
-  categoryPillTextActive: {
+  pillTextActive: {
     color: '#ffffff',
     fontWeight: '700',
   },
-  mapCardOuter: {
-    marginHorizontal: 20,
-    borderRadius: 24,
-    overflow: 'hidden',
-    marginBottom: 25,
-    height: 350,
-    backgroundColor: '#080810',
-  },
-  aiBanner: {
-    paddingHorizontal: 20,
-    marginBottom: 25,
-  },
-  aiBannerGrad: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    padding: 20,
-  },
-  aiBannerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-  },
-  aiBannerRef: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
-  aiBannerText: {
-    color: '#ffffff',
-    fontSize: 14,
-    marginTop: 4,
-    lineHeight: 20,
-  },
-  aiBannerBtn: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  aiBannerBtnText: {
-    color: '#080810',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-  pinSelectionArea: {
-    paddingHorizontal: 20,
-    marginBottom: 30,
-    backgroundColor: 'rgba(107, 78, 255, 0.05)',
-    paddingVertical: 20,
-    borderRadius: 25,
-  },
-  clearPin: {
-    alignSelf: 'center',
-    marginTop: 15,
-  },
-  section: {
-    marginBottom: 30,
-  },
-  sectionHeader: {
+
+  // ── Section common ────────────────────────────────────────────────────────
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
-    paddingHorizontal: 20,
-  },
-  sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#ffffff',
+    letterSpacing: -0.2,
+  },
+  sectionTag: {
+    backgroundColor: 'rgba(124,92,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(124,92,255,0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  sectionTagText: {
+    color: '#9B7AFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  viewAll: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  // ── Map ───────────────────────────────────────────────────────────────────
+  mapSection: {
+    paddingHorizontal: 22,
+    marginBottom: 24,
+  },
+  mapCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    height: 300,
+    backgroundColor: '#0D0D1E',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+
+  // ── Pin card ──────────────────────────────────────────────────────────────
+  pinCard: {
+    paddingHorizontal: 22,
+    marginBottom: 24,
+  },
+  pinCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pinCardLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 0.3,
+  },
+
+  // ── AI Insight ────────────────────────────────────────────────────────────
+  aiSection: {
+    paddingHorizontal: 22,
+    marginBottom: 28,
+  },
+  aiCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    padding: 20,
+    position: 'relative',
+  },
+  aiMesh: {
+    position: 'absolute',
+    top: -30,
+    right: -30,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  aiCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  aiLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  aiSpark: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+  },
+  aiLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  aiText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  aiHighlight: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  aiBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    gap: 5,
+    flexShrink: 0,
+  },
+  aiBtnText: {
+    color: '#5B3FD9',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+
+  // ── Recommended ───────────────────────────────────────────────────────────
+  recommendedSection: {
+    marginBottom: 12,
+  },
+  recommendedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+    paddingHorizontal: 22,
+  },
+  cardsContainer: {
+    paddingHorizontal: 22,
   },
   aiBadge: {
-    backgroundColor: 'rgba(107, 78, 255, 0.2)',
+    backgroundColor: 'rgba(124,92,255,0.15)',
     borderWidth: 1,
-    borderColor: '#6B4EFF',
-    paddingHorizontal: 6,
+    borderColor: 'rgba(124,92,255,0.4)',
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
   },
   aiBadgeText: {
-    color: '#8B5CF6',
+    color: '#9B7AFF',
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  viewAllText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 12,
-  },
-  recommendedScroll: {
-    paddingLeft: 20,
-  },
+
+  // ── Place card ────────────────────────────────────────────────────────────
   card: {
+    width: CARD_WIDTH,
+    height: 190,
     borderRadius: 20,
     overflow: 'hidden',
-    width: 280,
-    height: 180,
-    backgroundColor: '#111124',
+    backgroundColor: '#0D0D1E',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255,255,255,0.06)',
     position: 'relative',
   },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  cardTopOverlay: {
+  cardTopRow: {
     position: 'absolute',
     top: 12,
     left: 12,
@@ -569,69 +707,65 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   vibePill: {
-    backgroundColor: 'rgba(30, 58, 48, 0.85)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     borderWidth: 1,
-    borderColor: 'rgba(76, 217, 100, 0.3)',
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 5,
+  },
+  vibeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
   },
   vibePillText: {
-    color: '#4CD964',
-    fontSize: 10,
-    fontWeight: 'bold',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   saveIcon: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    padding: 6,
-    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    padding: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
-  cardInfo: {
+  cardFooter: {
     position: 'absolute',
     bottom: 12,
     left: 12,
     right: 12,
-    backgroundColor: 'rgba(12, 12, 26, 0.65)',
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    zIndex: 10,
   },
   cardName: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginBottom: 6,
   },
-  cardLocRow: {
+  cardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginVertical: 4,
+    gap: 6,
   },
-  cardLocText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  metaText: {
+    color: 'rgba(255,255,255,0.55)',
     fontSize: 11,
+    fontWeight: '500',
   },
-  cardBottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  weatherSmallBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  weatherSmallText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 11,
-  },
-  ratingBadgeSimple: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingBadgeText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: 'bold',
+  metaDivider: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
 });

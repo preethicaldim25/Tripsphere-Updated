@@ -90,7 +90,10 @@ export default function YourTripScreen() {
 
             const tripData: TripCreate = {
                 title: tripName,
-                destination_id: places[0]?.id || places[0]?._id || "65c3b1234567890123456789", // Fallback to a valid-ish ObjectId format if missing
+                destination_name: places[0]?.name || "Custom Destination",
+                location: places[0]?.location || places[0]?.district || "Tamil Nadu",
+                destination_image: places[0]?.image || undefined,
+                destination_id: places[0]?.id || places[0]?._id || undefined,
                 start_date: currentDate.toISOString().split('T')[0],
                 end_date: new Date(currentDate.getTime() + ((numDays - 1) * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
                 total_budget: parseInt(budget),
@@ -98,6 +101,7 @@ export default function YourTripScreen() {
                 itinerary: itinerary
             };
 
+            console.log("Trip Payload:", tripData);
             console.log("🌐 Calling itinerary API...");
             const createdTrip = await tripsAPI.create(tripData);
             console.log("✅ API Response:", createdTrip);

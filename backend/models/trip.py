@@ -3,13 +3,11 @@ from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
 
-class ItineraryItem(BaseModel):
-    day: int
-    description: str
-
 class TripBase(BaseModel):
     title: str
-    destination_id: str
+    destination_name: str
+    destination_image: Optional[str] = None
+    location: str
     start_date: str
     end_date: str
     total_budget: float
@@ -21,26 +19,16 @@ class TripBase(BaseModel):
 class TripCreate(TripBase):
     pass
 
-class TripUpdate(BaseModel):
-    title: Optional[str] = None
-    destination_name: Optional[str] = None
-    destination_image: Optional[str] = None
-    location: Optional[str] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    total_budget: Optional[float] = None
-    used_budget: Optional[float] = None
-    status: Optional[str] = None
-    members: Optional[List[str]] = None
-    itinerary: Optional[List[ItineraryItem]] = None
-
 class TripResponse(TripBase):
-    id: str = Field(alias="_id")
-    user_id: str
+    id: str
+    created_by: str
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+        "json_encoders": {
+            ObjectId: str
+        }
+    }

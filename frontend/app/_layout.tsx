@@ -48,6 +48,7 @@ export default function RootLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="auth/login" options={{ title: 'Login' }} />
       <Stack.Screen name="auth/register" options={{ title: 'Register' }} />
+      <Stack.Screen name="auth/verify-otp" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="destination/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="festivals" options={{ title: 'Festivals & Culture' }} />

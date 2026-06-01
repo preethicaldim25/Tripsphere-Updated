@@ -46,6 +46,7 @@ export default function CreateTripScreen() {
         members: members ? members.split(',').map(m => m.trim()).filter(Boolean) : [],
         itinerary: [],
       };
+      console.log("Trip Payload:", tripData);
       await createTrip(tripData);
       Alert.alert('Success', 'Trip created successfully');
       router.replace('/(tabs)/trips');

@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/themecontext';
 import { tripsAPI, aiAPI, destinationsAPI } from '../services/api';
 import { LinearGradient } from 'expo-linear-gradient';
+import SuccessModal from '../components/celebration/SuccessModal';
 
 const { width } = Dimensions.get('window');
 
@@ -34,6 +35,8 @@ export default function PlanTripScreen() {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
     const TOTAL_STEPS = 4;
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [generatedTrip, setGeneratedTrip] = useState<any>(null);
 
     const [allDestinations, setAllDestinations] = useState<any[]>([]);
 
@@ -77,6 +80,24 @@ export default function PlanTripScreen() {
 
     // Animations
     const fadeAnim = useRef(new Animated.Value(1)).current;
+    const confirmScale = useRef(new Animated.Value(0.8)).current;
+    const confirmFade = useRef(new Animated.Value(0)).current;
+    const emojiAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (showConfirm) {
+            Animated.parallel([
+                Animated.spring(confirmScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+                Animated.timing(confirmFade, { toValue: 1, duration: 500, useNativeDriver: true }),
+                Animated.loop(
+                    Animated.sequence([
+                        Animated.timing(emojiAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+                        Animated.timing(emojiAnim, { toValue: 0, duration: 2000, useNativeDriver: true })
+                    ])
+                )
+            ]).start();
+        }
+    }, [showConfirm]);
 
     const animateStep = (nextStep: number) => {
         Animated.sequence([
@@ -133,8 +154,11 @@ export default function PlanTripScreen() {
             });
 
             // Save to DB
-            const tripResponse = await tripsAPI.create({
+            const payload = {
                 title: aiResponse.name,
+                destination_name: formData.destination.name,
+                location: formData.destination.location || formData.destination.district || 'Tamil Nadu',
+                destination_image: formData.destination.image || undefined,
                 destination_id: formData.destination._id || formData.destination.id,
                 start_location: formData.startLocation || undefined,
                 stops: formData.stops.map(s => s._id || s.id || s.name),
@@ -147,16 +171,14 @@ export default function PlanTripScreen() {
                 metadata: aiResponse.metadata,
                 itinerary: aiResponse.itinerary,
                 notes: aiResponse.notes
-            });
+            };
 
-            router.push({
-                pathname: '/trip/itinerary',
-                params: { 
-                    tripId: tripResponse.id,
-                    startDate: tripResponse.start_date,
-                    endDate: tripResponse.end_date
-                }
-            } as any);
+            console.log("Trip Payload:", payload);
+            const tripResponse = await tripsAPI.create(payload as any);
+
+            setGeneratedTrip(tripResponse);
+            setLoading(false);
+            setShowConfirm(true);
 
         } catch (error: any) {
             console.error('Trip Generation Error:', error);
@@ -177,6 +199,8 @@ export default function PlanTripScreen() {
             </View>
         );
     }
+
+
 
     if (loading) {
         return (
@@ -205,6 +229,19 @@ export default function PlanTripScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: colors.background }}>
             <Stack.Screen options={{ headerShown: false }} />
             
+            <SuccessModal 
+                visible={showConfirm} 
+                destination={generatedTrip?.destination_name || 'your destination'}
+                onExplore={() => {
+                    setShowConfirm(false);
+                    router.push(`/trip/${generatedTrip.id}`);
+                }}
+                onLater={() => {
+                    setShowConfirm(false);
+                    router.push('/(tabs)/trips');
+                }}
+            />
+
             <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={handlePrev} style={styles.backBtn}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -466,5 +503,22 @@ const styles = StyleSheet.create({
     footerBtn: { borderRadius: 16, overflow: 'hidden', shadowColor: '#6B4EFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
     btnGradient: { flexDirection: 'row', padding: 18, justifyContent: 'center', alignItems: 'center', gap: 10 },
     btnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
-    loaderCircle: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }
+    loaderCircle: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+    confirmCard: { backgroundColor: 'rgba(255,255,255,0.05)', padding: 30, borderRadius: 32, width: width * 0.85, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    successIconContainer: { marginBottom: 20 },
+    confirmTitle: { fontSize: 24, fontWeight: '900', marginBottom: 10 },
+    confirmDesc: { fontSize: 14, textAlign: 'center', marginBottom: 30, paddingHorizontal: 10 },
+    confirmStatsRow: { flexDirection: 'row', width: '100%', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 20, padding: 20, marginBottom: 30 },
+    confirmStat: { flex: 1, alignItems: 'center' },
+    confirmStatLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 5 },
+    confirmStatValue: { fontSize: 16, fontWeight: '800' },
+    confirmStatDivider: { width: 1, height: '100%', backgroundColor: 'rgba(0,0,0,0.1)' },
+    confirmMainBtn: { width: '100%', borderRadius: 16, overflow: 'hidden', marginBottom: 15 },
+    confirmBtnGradient: { flexDirection: 'row', padding: 18, justifyContent: 'center', alignItems: 'center', gap: 10 },
+    confirmBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+    saveDraftBtn: { width: '100%', padding: 16, borderRadius: 16, borderWidth: 1, alignItems: 'center' },
+    saveDraftBtnText: { fontSize: 14, fontWeight: '700' },
+    emojiContainer: { position: 'absolute', width: '100%', height: '100%', zIndex: 0 },
+    floatingEmoji: { fontSize: 32, position: 'absolute', top: '20%', left: '10%' },
+    excitementText: { fontSize: 18, fontWeight: '900', marginTop: 30, letterSpacing: 1 }
 });

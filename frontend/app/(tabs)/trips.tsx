@@ -126,10 +126,10 @@ export default function TripsScreen() {
 
   const handleOpenEdit = (trip: any) => {
     setEditingTrip(trip);
-    setEditName(trip.name || '');
+    setEditName(trip.title || trip.name || '');
     setEditStartDate(trip.start_date || '');
     setEditEndDate(trip.end_date || '');
-    setEditBudget(trip.budget ? String(trip.budget) : '0');
+    setEditBudget(trip.total_budget ? String(trip.total_budget) : (trip.budget ? String(trip.budget) : '0'));
     setEditTravelers(trip.travelers || 1);
     setEditAccommodation(trip.accommodation || '');
     setEditNotes(trip.notes || '');
@@ -384,7 +384,7 @@ export default function TripsScreen() {
                     {/* Quick Cost Tag */}
                     <View style={styles.budgetBadge}>
                       <Ionicons name="wallet-outline" size={12} color="#FBBF24" />
-                      <Text style={styles.budgetText}>₹{item.budget}</Text>
+                      <Text style={styles.budgetText}>₹{item.total_budget || item.budget || 0}</Text>
                     </View>
                   </TouchableOpacity>
                 )}
@@ -397,7 +397,7 @@ export default function TripsScreen() {
                       onPress={() => router.push(`/trip/${item._id || item.id}`)}
                     >
                       <Text style={[styles.cardName, isCompleted && styles.compactCardName]}>
-                        {item.name}
+                        {item.title || item.name}
                       </Text>
                       <Text style={styles.cardLocation}>
                         {item.destination_details?.name || 'Explore Journey'} • {item.destination_details?.district || 'Tamil Nadu'}

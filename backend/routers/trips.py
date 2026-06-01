@@ -1,372 +1,225 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import Optional, List, Dict
+from fastapi import APIRouter, HTTPException, Depends, status
+from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
 from database import get_collection
 from auth import get_current_user
-from pydantic import BaseModel, Field
+from models.trip import TripCreate, TripResponse
 
 router = APIRouter(prefix="/trips", tags=["Trips"])
 
-class Activity(BaseModel):
-    id: str
-    time: str
-    title: str
-    description: Optional[str] = None
-    location: Optional[str] = None
-    cost: Optional[float] = 0.0
-    category: str = "sightseeing"
-    destination_id: Optional[str] = None
-    lat: Optional[float] = None
-    lng: Optional[float] = None
+@router.get("/", response_model=List[TripResponse])
+async def list_all_trips_debug(
+    current_user_id: str = Depends(get_current_user)
+):
+    """
+    Debug endpoint to list trips (Phase 3 logic)
+    Redirects to my-trips behavior for convenience
+    """
+    return await get_my_trips(current_user_id)
 
-class ItineraryDay(BaseModel):
-    day: int
-    date: str
-    activities: List[Activity] = []
-
-class TripCreate(BaseModel):
-    title: str
-    destination_id: Optional[str] = None
-    start_location: Optional[str] = None
-    stops: List[str] = []
-    start_date: str
-    end_date: str
-    total_budget: float
-    budget_breakdown: Optional[Dict[str, float]] = None
-    travelers: int = 1
-    accommodation: Optional[str] = None
-    notes: Optional[str] = None
-    status: Optional[str] = "upcoming"
-    is_confirmed: Optional[bool] = True
-    is_draft: Optional[bool] = False
-    transport_preferences: Optional[str] = None
-    metadata: Optional[Dict] = None
-    itinerary: List[ItineraryDay] = []
-
-class TripUpdate(BaseModel):
-    title: Optional[str] = None
-    destination_id: Optional[str] = None
-    start_location: Optional[str] = None
-    stops: Optional[List[str]] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    total_budget: Optional[float] = None
-    budget_breakdown: Optional[Dict[str, float]] = None
-    travelers: Optional[int] = None
-    accommodation: Optional[str] = None
-    notes: Optional[str] = None
-    status: Optional[str] = None
-    itinerary: Optional[List[ItineraryDay]] = None
-    transport_preferences: Optional[str] = None
-    is_confirmed: Optional[bool] = None
-    is_draft: Optional[bool] = None
-
-class TripResponse(BaseModel):
-    id: str
-    user_id: Optional[str] = None
-    name: Optional[str] = "Untitled Trip"
-    destination_id: Optional[str] = None
-    destination_details: Optional[Dict] = None
-    start_location: Optional[str] = None
-    stops: List[str] = []
-    stop_details: Optional[List[Dict]] = []
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    budget: Optional[float] = 0.0
-    used_budget: float = 0.0
-    budget_breakdown: Optional[Dict[str, float]] = None
-    travelers: int = 1
-    accommodation: Optional[str] = None
-    notes: Optional[str] = None
-    status: Optional[str] = "upcoming"
-    is_confirmed: bool = True
-    is_draft: bool = False
-    transport_preferences: Optional[str] = None
-    metadata: Optional[Dict] = None
-    itinerary: List[ItineraryDay] = []
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-def calculate_trip_status(trip: dict) -> str:
-    status = trip.get("status", "upcoming")
-    if status == "draft" or trip.get("is_draft") or not trip.get("is_confirmed", True):
-        return "draft"
-
-    end_date_str = trip.get("end_date")
-    if end_date_str:
-        try:
-            end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
-            # If current date is past the end date, it is completed!
-            if datetime.now() > end_date:
-                return "completed"
-        except:
-            pass
-    return "upcoming"
-
-@router.get("", response_model=List[TripResponse])
-async def get_trips(current_user_id: str = Depends(get_current_user)):
-    collection = get_collection("trips")
-    dest_collection = get_collection("destinations")
-    expenses_collection = get_collection("expenses")
-    
-    cursor = collection.find({"user_id": current_user_id}).sort("created_at", -1)
-    trips = await cursor.to_list(length=None)
-    
-    for trip in trips:
-        try:
-            trip["id"] = str(trip.pop("_id"))
-            
-            # Ensure required fields have fallbacks
-            if "name" not in trip: trip["name"] = trip.get("title", "Untitled Trip")
-            if "budget" not in trip: trip["budget"] = trip.get("total_budget", 0.0)
-            if "start_date" not in trip: trip["start_date"] = datetime.now().strftime("%Y-%m-%d")
-            if "end_date" not in trip: trip["end_date"] = datetime.now().strftime("%Y-%m-%d")
-            if "created_at" not in trip: trip["created_at"] = datetime.now()
-            if "updated_at" not in trip: trip["updated_at"] = datetime.now()
-            
-            # Auto-calculate status
-            trip["status"] = calculate_trip_status(trip)
-            
-            # 1. Populate Destination
-            trip["destination_details"] = None
-            dest_id = trip.get("destination_id")
-            if dest_id and len(str(dest_id)) == 24:
-                try:
-                    dest = await dest_collection.find_one({"_id": ObjectId(str(dest_id))})
-                    if dest:
-                        dest["_id"] = str(dest["_id"])
-                        trip["destination_details"] = dest
-                except Exception as e:
-                    print(f"Error fetching destination {dest_id}: {e}")
-
-            # 2. Used Budget
-            trip["used_budget"] = 0.0
-            try:
-                expenses_cursor = expenses_collection.find({"trip_id": trip["id"]})
-                expenses = await expenses_cursor.to_list(length=None)
-                trip["used_budget"] = sum(e.get("amount", 0) for e in expenses)
-            except Exception as e:
-                print(f"Error calculating budget for trip {trip['id']}: {e}")
-        except Exception as e:
-            print(f"Error processing trip: {e}")
-            continue
-    
-    return trips
-
-@router.post("", response_model=TripResponse)
+@router.post("/", response_model=TripResponse, status_code=status.HTTP_201_CREATED)
 async def create_trip(
     trip_data: TripCreate,
     current_user_id: str = Depends(get_current_user)
 ):
+    """
+    Create a new trip (Phase 2)
+    - Protected route
+    - Current user becomes creator
+    - Store in MongoDB
+    """
     try:
-        collection = get_collection("trips")
+        trips_collection = get_collection("trips")
         
-        trip = {
-            "user_id": current_user_id,
-            "name": trip_data.title,
-            "destination_id": trip_data.destination_id,
-            "start_location": trip_data.start_location,
-            "stops": trip_data.stops or [],
-            "start_date": trip_data.start_date,
-            "end_date": trip_data.end_date,
-            "budget": trip_data.total_budget,
-            "budget_breakdown": trip_data.budget_breakdown,
-            "travelers": trip_data.travelers,
-            "accommodation": trip_data.accommodation,
-            "notes": trip_data.notes,
-            "status": trip_data.status or "upcoming",
-            "is_confirmed": trip_data.is_confirmed if trip_data.is_confirmed is not None else True,
-            "is_draft": trip_data.is_draft if trip_data.is_draft is not None else False,
-            "transport_preferences": trip_data.transport_preferences,
-            "metadata": trip_data.metadata,
-            "itinerary": [day.dict() for day in trip_data.itinerary] if trip_data.itinerary else [],
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+        # Prepare trip document
+        new_trip = trip_data.dict()
+        new_trip["created_by"] = current_user_id
+        new_trip["created_at"] = datetime.utcnow()
+        new_trip["updated_at"] = datetime.utcnow()
+        
+        # Ensure creator is in members if not already there
+        if current_user_id not in new_trip["members"]:
+            new_trip["members"].append(current_user_id)
+        
+        # Insert into MongoDB
+        result = await trips_collection.insert_one(new_trip)
+        
+        # Add ID for response
+        new_trip["id"] = str(result.inserted_id)
+        
+        return new_trip
+        
+    except Exception as e:
+        print(f"[TRIPS] Error creating trip: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create trip: {str(e)}"
+        )
+
+@router.get("/my-trips", response_model=List[TripResponse])
+async def get_my_trips(
+    current_user_id: str = Depends(get_current_user)
+):
+    """
+    Get all trips for logged-in user (Phase 3)
+    - Created by user OR user is a member
+    - Sort latest first
+    """
+    try:
+        trips_collection = get_collection("trips")
+        
+        # Query: created_by matches current user OR user is in members array
+        query = {
+            "$or": [
+                {"created_by": current_user_id},
+                {"members": current_user_id}
+            ]
         }
         
-        result = await collection.insert_one(trip)
-        trip["id"] = str(result.inserted_id)
-        trip["used_budget"] = 0.0
-        return trip
+        # Find trips and sort by created_at descending (latest first)
+        cursor = trips_collection.find(query).sort("created_at", -1)
+        trips = await cursor.to_list(length=100)
+        
+        # Convert _id to id for response model
+        for trip in trips:
+            trip["id"] = str(trip["_id"])
+            
+        return trips
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[TRIPS] Error fetching trips: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch trips"
+        )
 
 @router.get("/{trip_id}", response_model=TripResponse)
-async def get_trip(
+async def get_trip_by_id(
     trip_id: str,
     current_user_id: str = Depends(get_current_user)
 ):
-    collection = get_collection("trips")
-    dest_collection = get_collection("destinations")
-    expenses_collection = get_collection("expenses")
-    
+    """
+    Fetch a single trip by its ID
+    - Verify user is creator or member
+    """
     try:
-        trip = await collection.find_one({
-            "_id": ObjectId(trip_id),
-            "user_id": current_user_id
-        })
-    except:
-        raise HTTPException(status_code=400, detail="Invalid trip ID")
-    
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    # Ensure fallbacks and calculate dynamic status
-    if "name" not in trip: trip["name"] = trip.get("title", "Untitled Trip")
-    if "budget" not in trip: trip["budget"] = trip.get("total_budget", 0.0)
-    trip["status"] = calculate_trip_status(trip)
-    
-    # 1. Populate Destination
-    if "destination_id" in trip:
-        try:
-            dest = await dest_collection.find_one({"_id": ObjectId(trip["destination_id"])})
-            if dest:
-                dest["_id"] = str(dest["_id"])
-                trip["destination_details"] = dest
-        except: pass
+        trips_collection = get_collection("trips")
         
-    # 2. Populate Stops
-    trip["stop_details"] = []
-    if "stops" in trip and trip["stops"]:
-        stop_ids = []
-        for s in trip["stops"]:
-            try: stop_ids.append(ObjectId(s))
-            except: pass
+        # Validate ObjectId
+        if not ObjectId.is_valid(trip_id):
+            raise HTTPException(status_code=400, detail="Invalid Trip ID format")
             
-        if stop_ids:
-            stops_cursor = dest_collection.find({"_id": {"$in": stop_ids}})
-            stops = await stops_cursor.to_list(length=None)
-            for s in stops:
-                s["_id"] = str(s["_id"])
-                trip["stop_details"].append(s)
-                
-    # 3. Calculate used_budget
-    expenses_cursor = expenses_collection.find({"trip_id": trip_id})
-    expenses = await expenses_cursor.to_list(length=None)
-    trip["used_budget"] = sum(e.get("amount", 0) for e in expenses)
-    
-    trip["id"] = str(trip.pop("_id"))
-    return trip
+        # Find trip and ensure access
+        trip = await trips_collection.find_one({
+            "_id": ObjectId(trip_id),
+            "$or": [
+                {"created_by": current_user_id},
+                {"members": current_user_id}
+            ]
+        })
+        
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found or access denied")
+            
+        trip["id"] = str(trip["_id"])
+        return trip
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[TRIPS] Error fetching trip {trip_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch trip details")
 
-@router.put("/{trip_id}", response_model=dict)
+@router.put("/{trip_id}", response_model=TripResponse)
 async def update_trip(
     trip_id: str,
-    trip_data: TripUpdate,
+    update_data: dict,
     current_user_id: str = Depends(get_current_user)
 ):
-    collection = get_collection("trips")
-    
-    update_data = {k: v for k, v in trip_data.dict().items() if v is not None}
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No data to update")
-    
-    if "title" in update_data:
-        update_data["name"] = update_data.pop("title")
-    if "total_budget" in update_data:
-        update_data["budget"] = update_data.pop("total_budget")
-    if "itinerary" in update_data and update_data["itinerary"] is not None:
-        update_data["itinerary"] = [day.dict() for day in update_data["itinerary"]]
-
-    update_data["updated_at"] = datetime.utcnow()
-    
+    """
+    Update trip details (e.g., budget, name)
+    """
     try:
-        result = await collection.update_one(
-            {"_id": ObjectId(trip_id), "user_id": current_user_id},
-            {"$set": update_data}
+        trips_collection = get_collection("trips")
+        
+        if not ObjectId.is_valid(trip_id):
+            raise HTTPException(status_code=400, detail="Invalid Trip ID")
+            
+        # Update timestamp
+        update_data["updated_at"] = datetime.utcnow()
+        
+        # Perform update
+        result = await trips_collection.find_one_and_update(
+            {"_id": ObjectId(trip_id), "created_by": current_user_id},
+            {"$set": update_data},
+            return_document=True
         )
-    except:
-        raise HTTPException(status_code=400, detail="Invalid trip ID")
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    return {"message": "Trip updated successfully"}
-
-@router.post("/{trip_id}/duplicate", response_model=TripResponse)
-async def duplicate_trip(
-    trip_id: str,
-    current_user_id: str = Depends(get_current_user)
-):
-    collection = get_collection("trips")
-    try:
-        original = await collection.find_one({"_id": ObjectId(trip_id), "user_id": current_user_id})
-    except:
-        raise HTTPException(status_code=400, detail="Invalid trip ID")
         
-    if not original:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        if not result:
+            raise HTTPException(status_code=404, detail="Trip not found or not authorized to update")
+            
+        result["id"] = str(result["_id"])
+        return result
         
-    new_trip = original.copy()
-    new_trip.pop("_id", None)
-    new_trip["name"] = f"Copy of {original.get('name', 'Untitled Trip')}"
-    new_trip["created_at"] = datetime.utcnow()
-    new_trip["updated_at"] = datetime.utcnow()
-    
-    # Duplicated trips start as editable drafts
-    new_trip["status"] = "draft"
-    new_trip["is_draft"] = True
-    new_trip["is_confirmed"] = False
-    
-    result = await collection.insert_one(new_trip)
-    new_trip["id"] = str(result.inserted_id)
-    new_trip["used_budget"] = 0.0
-    return new_trip
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[TRIPS] Error updating trip {trip_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update trip")
 
-@router.delete("/{trip_id}", response_model=dict)
+@router.delete("/{trip_id}")
 async def delete_trip(
     trip_id: str,
     current_user_id: str = Depends(get_current_user)
 ):
-    collection = get_collection("trips")
-    
+    """
+    Delete a trip
+    - Only creator can delete
+    - Validate ObjectId
+    """
     try:
-        result = await collection.delete_one({
-            "_id": ObjectId(trip_id),
-            "user_id": current_user_id
-        })
-    except:
-        raise HTTPException(status_code=400, detail="Invalid trip ID")
-    
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    return {"message": "Trip deleted successfully"}
-
-# --- Itinerary Endpoints ---
-
-@router.get("/{trip_id}/itinerary", response_model=List[ItineraryDay])
-async def get_itinerary(
-    trip_id: str,
-    current_user_id: str = Depends(get_current_user)
-):
-    collection = get_collection("trips")
-    trip = await collection.find_one({"_id": ObjectId(trip_id), "user_id": current_user_id})
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    return trip.get("itinerary", [])
-
-@router.post("/{trip_id}/itinerary", response_model=dict)
-async def update_itinerary(
-    trip_id: str,
-    itinerary: List[ItineraryDay],
-    current_user_id: str = Depends(get_current_user)
-):
-    collection = get_collection("trips")
-    
-    # Pre-process itinerary data
-    itinerary_data = [day.dict() for day in itinerary]
-    
-    result = await collection.update_one(
-        {"_id": ObjectId(trip_id), "user_id": current_user_id},
-        {"$set": {"itinerary": itinerary_data, "updated_at": datetime.utcnow()}}
-    )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        trips_collection = get_collection("trips")
         
-    return {"message": "Itinerary updated successfully"}
+        # 1. Validate ObjectId
+        if not ObjectId.is_valid(trip_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="Invalid trip ID format"
+            )
+            
+        # 2. MongoDB delete logic: Delete only if created_by matches current user
+        # (This ensures 403-like behavior if they try to delete someone else's trip)
+        result = await trips_collection.delete_one({
+            "_id": ObjectId(trip_id),
+            "created_by": current_user_id
+        })
+        
+        # 3. Handle not found or unauthorized
+        if result.deleted_count == 0:
+            # Check if it exists at all to differentiate between 404 and 403
+            exists = await trips_collection.find_one({"_id": ObjectId(trip_id)})
+            if not exists:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, 
+                    detail="Trip not found"
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, 
+                    detail="You are not authorized to delete this trip"
+                )
+        
+        return {
+            "success": True,
+            "message": "Trip deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[TRIPS] Error deleting trip {trip_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete trip"
+        )

@@ -2,16 +2,15 @@ import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 import sys
 import os
-import certifi
 
 # Adjust paths if needed
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from database import connect_to_mongo, get_collection
+from database import init_db, get_collection
 from auth import hash_password, verify_password
 
 async def test_auth():
     print("Testing auth flow...")
-    db = await connect_to_mongo()
+    db = await init_db()
     if db is None:
         print("Failed to connect to mongo")
         return

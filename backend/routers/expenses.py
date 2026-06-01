@@ -30,14 +30,19 @@ async def get_trip_expenses(
     current_user_id: str = Depends(get_current_user)
 ):
     """Get all expenses for a specific trip"""
-    # First verify the trip belongs to the user
+    # First verify the trip exists and the user has access
     trips_collection = get_collection("trips")
     try:
+        # Check if user is either the creator or a member (Phase 3 logic)
         trip = await trips_collection.find_one({
             "_id": ObjectId(trip_id),
-            "user_id": current_user_id
+            "$or": [
+                {"created_by": current_user_id},
+                {"members": current_user_id}
+            ]
         })
-    except:
+    except Exception as e:
+        print(f"[EXPENSES] DB Error: {e}")
         raise HTTPException(status_code=400, detail="Invalid trip ID")
     
     if not trip:
@@ -66,14 +71,18 @@ async def create_expense(
     current_user_id: str = Depends(get_current_user)
 ):
     """Create a new expense"""
-    # Verify trip ownership
+    # Verify trip ownership/membership
     trips_collection = get_collection("trips")
     try:
         trip = await trips_collection.find_one({
             "_id": ObjectId(expense_data.trip_id),
-            "user_id": current_user_id
+            "$or": [
+                {"created_by": current_user_id},
+                {"members": current_user_id}
+            ]
         })
-    except:
+    except Exception as e:
+        print(f"[EXPENSES] DB Error: {e}")
         raise HTTPException(status_code=400, detail="Invalid trip ID")
     
     if not trip:

@@ -13,6 +13,8 @@ import {
   Platform,
   Modal,
   TextInput,
+  useColorScheme,
+  StatusBar,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -66,6 +68,8 @@ const AnimatedNumber = ({ value, style }: { value: number, style?: any }) => {
 };
 
 const ItineraryDayCard = ({ day, idx, currentDay, toggleActivity, onAdd, onEdit, onDelete, styles }: any) => {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
     const delayAnim = useRef(new Animated.Value(0)).current;
     
     useEffect(() => {
@@ -73,8 +77,8 @@ const ItineraryDayCard = ({ day, idx, currentDay, toggleActivity, onAdd, onEdit,
     }, [idx]);
 
     const getCategoryIcon = (category: string) => {
-        switch (category) {
-            case 'food': return 'restaurant';
+        switch (category?.toLowerCase()) {
+            case 'food': return 'close-outline'; // Using close-outline for the 'X' icon shown in image
             case 'sightseeing': return 'camera';
             case 'travel': return 'car';
             case 'accommodation': return 'bed';
@@ -82,72 +86,76 @@ const ItineraryDayCard = ({ day, idx, currentDay, toggleActivity, onAdd, onEdit,
         }
     };
 
+    const getCategoryColor = (category: string) => {
+        switch (category?.toLowerCase()) {
+            case 'food': return '#FF4B4B';
+            case 'sightseeing': return '#40E0D0';
+            case 'travel': return '#6B4EFF';
+            default: return '#999';
+        }
+    };
+
     return (
-        <Animated.View style={{ 
-            opacity: delayAnim, 
-            transform: [{ translateY: delayAnim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] 
-        }}>
-            <View style={styles.timelineDay}>
-                <View style={styles.dayIndicator}>
-                    <View style={[styles.dayDot, day.day === currentDay && styles.activeDot]} />
-                    <View style={styles.dayLine} />
+        <Animated.View style={[
+            styles.imageMatchDayCard, 
+            { 
+                opacity: delayAnim, 
+                backgroundColor: isDark ? '#1C1C1E' : '#fff',
+                borderColor: isDark ? '#2C2C2E' : '#F0F0F0',
+                transform: [{ translateY: delayAnim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] 
+            }
+        ]}>
+            <View style={styles.imageMatchDayHeader}>
+                <View>
+                    <Text style={[styles.imageMatchDayTitle, { color: isDark ? '#fff' : '#1A1A1A' }]}>Day {day.day}</Text>
+                    <Text style={styles.imageMatchDayDate}>{new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>
                 </View>
-                <View style={styles.dayContent}>
-                    <View style={styles.dayHeader}>
-                        <View>
-                            <Text style={styles.dayTitle}>Day {day.day}</Text>
-                            <Text style={{ fontSize: 12, color: '#999', marginTop: 2 }}>{new Date(day.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}</Text>
-                        </View>
-                        <TouchableOpacity style={styles.inlineAddBtn} onPress={() => onAdd(day.day)}>
-                            <Ionicons name="add-circle" size={24} color="#6B4EFF" />
-                        </TouchableOpacity>
-                    </View>
-                    
-                    {day.activities.length === 0 ? (
-                        <View style={styles.emptyActivity}>
-                            <Text style={styles.emptyActivityText}>No activities added yet.</Text>
-                        </View>
-                    ) : (
-                        day.activities.map((activity: any) => (
-                            <View key={activity.id} style={styles.activityContainer}>
-                                <AnimatedTouchable 
-                                    style={[styles.activityCard, activity.completed && styles.completedCard, { flex: 1, marginBottom: 0 }]}
-                                    onPress={() => toggleActivity(day.day, activity.id)}
-                                >
-                                    <View style={styles.activityMain}>
-                                        <Ionicons 
-                                            name={activity.completed ? 'checkmark-circle' : 'ellipse-outline'} 
-                                            size={22} 
-                                            color={activity.completed ? '#4CAF50' : '#6B4EFF'} 
-                                        />
-                                        <View style={{ marginLeft: 10, flex: 1 }}>
-                                            <Text style={[styles.activityTitle, activity.completed && styles.completedText]} numberOfLines={1}>{activity.title}</Text>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                                                <Ionicons name={getCategoryIcon(activity.category) as any} size={10} color="#999" style={{ marginRight: 4 }} />
-                                                <Text style={styles.activityTime}>{activity.time} {activity.cost > 0 ? `• ₹${activity.cost}` : ''}</Text>
-                                            </View>
-                                        </View>
-                                    </View>
-                                </AnimatedTouchable>
-                                <View style={styles.activityActions}>
-                                    <TouchableOpacity onPress={() => onEdit(day.day, activity)} style={styles.actActionBtn}>
-                                        <Ionicons name="pencil" size={16} color="#6B4EFF" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => onDelete(day.day, activity.id)} style={styles.actActionBtn}>
-                                        <Ionicons name="trash" size={16} color="#FF4B4B" />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        ))
-                    )}
-                    <View style={{ height: 10 }} />
-                </View>
+                <TouchableOpacity 
+                    style={[styles.imageMatchAddBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F0EDFF' }]} 
+                    onPress={() => onAdd(day.day)}
+                >
+                    <Ionicons name="add" size={16} color={isDark ? '#fff' : '#6B4EFF'} />
+                    <Text style={[styles.imageMatchAddBtnTxt, { color: isDark ? '#fff' : '#6B4EFF' }]}>Add</Text>
+                </TouchableOpacity>
             </View>
+
+            {day.activities.map((activity: any, actIdx: number) => (
+                <View key={activity.id} style={styles.imageMatchActivityRow}>
+                    <View style={styles.imageMatchTimeline}>
+                        <Text style={[styles.imageMatchActivityTime, { color: isDark ? '#fff' : '#666' }]}>{activity.time}</Text>
+                        <View style={styles.imageMatchTimelineLineContainer}>
+                            <View style={[styles.imageMatchTimelineDot, { backgroundColor: getCategoryColor(activity.category) }]} />
+                            {actIdx < day.activities.length - 1 && (
+                                <View style={[styles.imageMatchTimelineLine, { backgroundColor: isDark ? '#3A3A3C' : '#F0F0F0' }]} />
+                            )}
+                        </View>
+                    </View>
+
+                    <TouchableOpacity 
+                        style={[styles.imageMatchActivityCard, { backgroundColor: isDark ? '#2C2C2E' : '#F8F9FF' }]}
+                        onPress={() => onEdit(day.day, activity)}
+                    >
+                        <View style={styles.imageMatchActivityTop}>
+                            <Text style={[styles.imageMatchActivityTitle, { color: isDark ? '#fff' : '#1A1A1A' }]} numberOfLines={1}>{activity.title}</Text>
+                            {activity.cost > 0 && <Text style={styles.imageMatchActivityCost}>₹{activity.cost}</Text>}
+                        </View>
+                        <View style={styles.imageMatchActivityCategoryRow}>
+                            <Ionicons name={getCategoryIcon(activity.category) as any} size={12} color={getCategoryColor(activity.category)} />
+                            <Text style={[styles.imageMatchActivityCategoryTxt, { color: getCategoryColor(activity.category) }]}>
+                                {activity.category?.charAt(0).toUpperCase() + activity.category?.slice(1)}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+                </View>
+            ))}
         </Animated.View>
     );
 };
 
 export default function TripDetailsScreen() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
@@ -172,12 +180,35 @@ export default function TripDetailsScreen() {
     time: '09:00',
     location: '',
     cost: '',
-    category: 'sightseeing'
+    category: 'sightseeing',
+    notes: ''
   });
   
   const [selectedDay, setSelectedDay] = useState(1);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [tripMode, setTripMode] = useState(false);
+  const [viewMode, setViewMode] = useState('overview'); // Added viewMode for tabs
+
+  const fadeAnimHeader = useRef(new Animated.Value(0)).current;
+  const fadeAnimContent = useRef(new Animated.Value(0)).current;
+  const fadeAnimMap = useRef(new Animated.Value(0)).current;
+  const fadeAnimBudget = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const stepSlideAnim = useRef(new Animated.Value(0)).current;
+  const routeLineAnim = useRef(new Animated.Value(0)).current;
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadTripData();
+    }
+  }, [id, isAuthenticated]);
+
+  // Auth guard — use Redirect component instead of router.replace() in useEffect
+  // to avoid "navigate before Root Layout mounted" error
+  if (!isAuthenticated) {
+    return <Redirect href="/auth/login" />;
+  }
 
   const getDayPlaces = (trip: any, selectedDay: number) => {
     if (!trip || !trip.itinerary) return [];
@@ -209,25 +240,6 @@ export default function TripDetailsScreen() {
         lng: p.longitude
     }));
   };
-
-  const fadeAnimHeader = useRef(new Animated.Value(0)).current;
-  const fadeAnimContent = useRef(new Animated.Value(0)).current;
-  const fadeAnimMap = useRef(new Animated.Value(0)).current;
-  const fadeAnimBudget = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const stepSlideAnim = useRef(new Animated.Value(0)).current;
-  const routeLineAnim = useRef(new Animated.Value(0)).current;
-
-  // Auth guard — use Redirect component instead of router.replace() in useEffect
-  // to avoid "navigate before Root Layout mounted" error
-  if (!isAuthenticated) {
-    return <Redirect href="/auth/login" />;
-  }
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => {
-    loadTripData();
-  }, [id]);
 
   const triggerEntryAnimations = (percentUsed: number) => {
     console.log("🚀 Animations started!");
@@ -377,7 +389,8 @@ export default function TripDetailsScreen() {
         time: activity.time,
         location: activity.location || '',
         cost: String(activity.cost || ''),
-        category: activity.category || 'sightseeing'
+        category: activity.category || 'sightseeing',
+        notes: activity.notes || ''
     });
     setActivityModalVisible(true);
   };
@@ -395,6 +408,7 @@ export default function TripDetailsScreen() {
         location: activityForm.location,
         cost: Number(activityForm.cost) || 0,
         category: activityForm.category,
+        notes: activityForm.notes,
         completed: editingActivity?.completed || false
     };
 
@@ -543,7 +557,7 @@ export default function TripDetailsScreen() {
                 </div>
                 <div class="summary-item">
                   <div class="summary-label">Total Budget</div>
-                  <div class="summary-value budget-value">₹${trip.budget}</div>
+                  <div class="summary-value budget-value">₹${trip.total_budget || trip.budget || 0}</div>
                 </div>
                 <div class="summary-item">
                   <div class="summary-label">Current Spent</div>
@@ -563,6 +577,129 @@ export default function TripDetailsScreen() {
       `;
   };
 
+  const renderTabs = () => (
+    <View style={[styles.tabBar, { backgroundColor: isDark ? '#121212' : '#fff', borderBottomColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}>
+      <TouchableOpacity 
+        style={[styles.tabItem, viewMode === 'overview' && { backgroundColor: isDark ? '#2C2C2E' : '#F0EDFF' }]} 
+        onPress={() => setViewMode('overview')}
+      >
+        <Ionicons name="grid-outline" size={18} color={viewMode === 'overview' ? '#6B4EFF' : (isDark ? '#8E8E93' : '#8E8E93')} />
+        <Text style={[styles.tabLabel, viewMode === 'overview' && styles.activeTabLabel]}>Overview</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[styles.tabItem, viewMode === 'itinerary' && { backgroundColor: isDark ? '#2C2C2E' : '#F0EDFF' }]} 
+        onPress={() => setViewMode('itinerary')}
+      >
+        <Ionicons name="calendar-outline" size={18} color={viewMode === 'itinerary' ? '#6B4EFF' : (isDark ? '#8E8E93' : '#8E8E93')} />
+        <Text style={[styles.tabLabel, viewMode === 'itinerary' && styles.activeTabLabel]}>Itinerary</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={[styles.tabItem, viewMode === 'stays' && { backgroundColor: isDark ? '#2C2C2E' : '#F0EDFF' }]} 
+        onPress={() => setViewMode('stays')}
+      >
+        <Ionicons name="bed-outline" size={18} color={viewMode === 'stays' ? '#6B4EFF' : (isDark ? '#8E8E93' : '#8E8E93')} />
+        <Text style={[styles.tabLabel, viewMode === 'stays' && styles.activeTabLabel]}>Stays</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={[styles.tabItem, viewMode === 'route' && { backgroundColor: isDark ? '#2C2C2E' : '#F0EDFF' }]} 
+        onPress={() => setViewMode('route')}
+      >
+        <Ionicons name="map-outline" size={18} color={viewMode === 'route' ? '#6B4EFF' : (isDark ? '#8E8E93' : '#8E8E93')} />
+        <Text style={[styles.tabLabel, viewMode === 'route' && styles.activeTabLabel]}>Route</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderLocalIntelligence = () => {
+    if (!trip?.metadata) return null;
+    return (
+      <View style={[styles.intelligenceCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff', borderColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}>
+        <View style={styles.intelligenceHeader}>
+          <Ionicons name="sparkles" size={20} color="#6B4EFF" />
+          <Text style={[styles.intelligenceTitle, { color: isDark ? '#fff' : '#1A1A1A' }]}>Local Travel Intelligence</Text>
+        </View>
+        
+        {trip.metadata.weather_suitability && (
+          <View style={styles.intelItem}>
+            <View style={[styles.intelIconBox, { backgroundColor: isDark ? '#2C2C2E' : '#F8F9FF' }]}><Ionicons name="sunny-outline" size={16} color="#FF9500" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.intelLabel, { color: isDark ? '#fff' : '#1A1A1A' }]}>Weather & Suitability</Text>
+              <Text style={[styles.intelValue, { color: isDark ? '#8E8E93' : '#666' }]}>{trip.metadata.weather_suitability}</Text>
+            </View>
+          </View>
+        )}
+
+        {trip.metadata.transit_advice && (
+          <View style={styles.intelItem}>
+            <View style={[styles.intelIconBox, { backgroundColor: isDark ? '#2C2C2E' : '#F8F9FF' }]}><Ionicons name="bus-outline" size={16} color="#6B4EFF" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.intelLabel, { color: isDark ? '#fff' : '#1A1A1A' }]}>Transit & Mobility</Text>
+              <Text style={[styles.intelValue, { color: isDark ? '#8E8E93' : '#666' }]}>{trip.metadata.transit_advice}</Text>
+            </View>
+          </View>
+        )}
+
+        {trip.metadata.food_streets && (
+          <View style={styles.intelItem}>
+            <View style={[styles.intelIconBox, { backgroundColor: isDark ? '#2C2C2E' : '#F8F9FF' }]}><Ionicons name="restaurant-outline" size={16} color="#FF2D55" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.intelLabel, { color: isDark ? '#fff' : '#1A1A1A' }]}>Local Food Intelligence</Text>
+              <Text style={[styles.intelValue, { color: isDark ? '#8E8E93' : '#666' }]}>Famous: {trip.metadata.famous_foods?.join(', ') || 'Various local dishes'}</Text>
+              <Text style={styles.intelSubValue}>Spots: {trip.metadata.food_streets?.join(', ')}</Text>
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderStays = () => {
+    const accommodations = trip?.metadata?.accommodations;
+    if (!accommodations) {
+        return (
+            <View style={[styles.emptyStays, { backgroundColor: isDark ? '#121212' : '#F8F9FF' }]}>
+                <Ionicons name="bed-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyStaysText}>No stay recommendations found for this trip.</Text>
+            </View>
+        );
+    }
+
+    return (
+      <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
+        <View style={[styles.advisorHeaderBox, { backgroundColor: isDark ? '#1C1C1E' : '#F0EDFF', borderLeftColor: '#6B4EFF' }]}>
+            <Text style={[styles.advisorAreaTitle, { color: isDark ? '#fff' : '#1A1A1A' }]}>📍 Recommended Area: {accommodations.recommended_area}</Text>
+            <Text style={[styles.advisorAreaDesc, { color: isDark ? '#8E8E93' : '#666' }]}>{accommodations.area_description}</Text>
+        </View>
+
+        {accommodations.list?.map((hotel: any, index: number) => (
+          <View key={index} style={[styles.hotelCard, { backgroundColor: isDark ? '#1C1C1E' : '#fff', borderColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}>
+            <View style={styles.hotelHeader}>
+              <View style={{ flex: 1 }}>
+                <View style={styles.hotelBadgeRow}>
+                  <View style={[styles.hotelBadge, { backgroundColor: isDark ? '#2C2C2E' : '#F0EDFF' }]}><Text style={styles.hotelBadgeTxt}>{hotel.badge || 'AI Pick'}</Text></View>
+                  <Text style={styles.hotelType}>{hotel.type}</Text>
+                </View>
+                <Text style={[styles.hotelName, { color: isDark ? '#fff' : '#1A1A1A' }]}>{hotel.name}</Text>
+              </View>
+              <View style={styles.priceTag}>
+                <Text style={styles.priceVal}>{hotel.price}</Text>
+                <Text style={styles.priceLabel}>/ night</Text>
+              </View>
+            </View>
+            <Text style={[styles.hotelDesc, { color: isDark ? '#8E8E93' : '#666' }]}>{hotel.desc}</Text>
+            <View style={[styles.hotelMeta, { borderTopColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}>
+              <View style={styles.hotelMetaItem}><Ionicons name="map-outline" size={12} color="#6B4EFF" /><Text style={[styles.hotelMetaTxt, { color: isDark ? '#8E8E93' : '#666' }]}>{hotel.area}</Text></View>
+              <View style={styles.hotelMetaItem}><Ionicons name="star-outline" size={12} color="#FF9500" /><Text style={[styles.hotelMetaTxt, { color: isDark ? '#8E8E93' : '#666' }]}>{hotel.safety}</Text></View>
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   const toggleActivity = async (dayNum: number, activityId: string) => {
     const updated = itinerary.map((d: any) => {
         if (d.day === dayNum) {
@@ -576,7 +713,9 @@ export default function TripDetailsScreen() {
         return d;
     });
     setItinerary(updated);
-    await saveItineraryToBackend(updated);
+    
+    // Save to backend without awaiting to prevent hook sequence issues
+    saveItineraryToBackend(updated).catch(e => console.error(e));
   };
 
   const openNavigation = (lat: number, lng: number) => {
@@ -654,91 +793,111 @@ export default function TripDetailsScreen() {
   };
 
   const renderItinerary = () => {
-      return (
-          <View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginBottom: 15 }}>
-                  <Text style={styles.sectionTitle}>Journey Plan</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Ionicons name="information-circle-outline" size={16} color="#6B4EFF" style={{ marginRight: 5 }} />
-                      <Text style={{ fontSize: 12, color: '#6B4EFF', fontWeight: '600' }}>Manage daily spots</Text>
-                  </View>
+      if (!itinerary || itinerary.length === 0) {
+          return (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                  <Ionicons name="calendar-outline" size={64} color="#ccc" />
+                  <Text style={{ color: '#999', marginTop: 15, fontSize: 16, fontWeight: '600' }}>No itinerary available</Text>
+                  <Text style={{ color: '#bbb', marginTop: 5, textAlign: 'center' }}>Start adding activities to plan your journey!</Text>
               </View>
-              {itinerary.length === 0 ? (
-                  <View style={{ padding: 30, alignItems: 'center' }}>
-                      <Ionicons name="calendar-outline" size={48} color="#ccc" />
-                      <Text style={{ color: '#999', marginTop: 10, textAlign: 'center' }}>Initializing itinerary...</Text>
-                  </View>
-              ) : (
-                  itinerary.map((day: any, idx: number) => (
-                      <ItineraryDayCard 
-                          key={day.day} 
-                          day={day} 
-                          idx={idx} 
-                          currentDay={currentDay} 
-                          toggleActivity={toggleActivity} 
-                          onAdd={handleAddActivity}
-                          onEdit={handleEditActivity}
-                          onDelete={handleDeleteActivity}
-                          styles={styles} 
-                      />
-                  ))
-              )}
+          );
+      }
+
+      return (
+          <View style={styles.itineraryContainer}>
+              {/* Image Match Budget Card at the top of Itinerary */}
+              {renderBudgetInsights()}
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginBottom: 15 }}>
+                  <Text style={[styles.sectionTitle, { color: '#fff' }]}>Journey Plan</Text>
+                  <TouchableOpacity style={styles.planningEditBtn} onPress={() => {}}>
+                      <Ionicons name="create-outline" size={16} color="#6B4EFF" />
+                      <Text style={styles.planningEditBtnTxt}>Edit Mode</Text>
+                  </TouchableOpacity>
+              </View>
+
+              {/* Day Tabs for Itinerary - also dark themed */}
+              <View style={[styles.daySelectorContainer, { paddingHorizontal: 20, backgroundColor: isDark ? '#000' : '#fff' }]}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daySelectorScroll}>
+                      {itinerary.map((day) => (
+                          <TouchableOpacity
+                              key={day.day}
+                              onPress={() => setSelectedDay(day.day)}
+                              style={[
+                                  styles.dayButton,
+                                  { backgroundColor: isDark ? '#1C1C1E' : '#F8F9FF', borderColor: isDark ? '#2C2C2E' : '#F0F0FF' },
+                                  selectedDay === day.day && styles.selectedDayButton
+                              ]}
+                          >
+                              <Text style={[
+                                  styles.dayButtonText,
+                                  { color: isDark ? '#8E8E93' : '#666' },
+                                  selectedDay === day.day && styles.selectedDayButtonText
+                              ]}>
+                                  Day {day.day}
+                              </Text>
+                          </TouchableOpacity>
+                      ))}
+                  </ScrollView>
+              </View>
+
+              <View style={{ marginTop: 20 }}>
+                {itinerary.filter((d: any) => d.day === selectedDay).map((day: any, idx: number) => (
+                    <ItineraryDayCard 
+                        key={day.day} 
+                        day={day} 
+                        idx={idx} 
+                        currentDay={currentDay} 
+                        toggleActivity={toggleActivity} 
+                        onAdd={handleAddActivity}
+                        onEdit={handleEditActivity}
+                        onDelete={handleDeleteActivity}
+                        styles={styles} 
+                    />
+                ))}
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.planningAddActivityMain, { backgroundColor: isDark ? '#1C1C1E' : '#fff', borderColor: isDark ? '#2C2C2E' : '#E0D9FF' }]}
+                onPress={() => handleAddActivity(selectedDay)}
+              >
+                  <Ionicons name="add" size={20} color={isDark ? '#B19DFF' : '#6B4EFF'} />
+                  <Text style={[styles.planningAddActivityMainTxt, { color: isDark ? '#B19DFF' : '#6B4EFF' }]}>Add Activity to Day {selectedDay}</Text>
+              </TouchableOpacity>
           </View>
       );
   };
 
   const renderBudgetInsights = () => {
     const totalSpent = trip.used_budget || 0;
-    const remaining = trip.budget - totalSpent;
+    const totalBudget = trip.total_budget || trip.budget || 0;
+    const remaining = totalBudget - totalSpent;
+    const percentUsed = totalBudget > 0 ? Math.floor(Math.min(100, (totalSpent / totalBudget) * 100)) : 0;
 
     return (
-        <Animated.View style={[styles.insightSection, { opacity: fadeAnimBudget, transform: [{ translateY: fadeAnimBudget.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }]}>
-            <View style={styles.budgetProgressContainer}>
-                <View style={styles.budgetFlowHeader}>
-                    <Text style={styles.insightTitle}>Financial Health</Text>
-                    <TouchableOpacity 
-                        style={[styles.miniEditBtn, isEditingBudget && { backgroundColor: '#6B4EFF' }]} 
-                        onPress={() => {
-                            if (isEditingBudget) {
-                                handleSaveBudget();
-                            } else {
-                                setTempBudget(String(trip.budget));
-                                setIsEditingBudget(true);
-                            }
-                        }}
-                    >
-                        <Ionicons name={isEditingBudget ? "checkmark" : "pencil"} size={14} color={isEditingBudget ? "#fff" : "#6B4EFF"} />
-                        <Text style={[styles.miniEditBtnTxt, isEditingBudget && { color: '#fff' }]}>{isEditingBudget ? 'Save' : 'Edit'}</Text>
-                    </TouchableOpacity>
+        <Animated.View style={[
+            styles.imageMatchBudgetCard, 
+            { opacity: fadeAnimBudget, backgroundColor: isDark ? '#1C1C1E' : '#6B4EFF' }
+        ]}>
+            <View style={styles.budgetCardTop}>
+                <View>
+                    <Text style={[styles.budgetCardLabel, { color: isDark ? '#8E8E93' : 'rgba(255,255,255,0.8)' }]}>Planned Budget</Text>
+                    <Text style={styles.budgetCardValue}>₹{totalBudget.toLocaleString()}</Text>
                 </View>
-                
-                <View style={styles.progressBarBg}>
-                    <Animated.View style={[styles.progressBarFill, { 
-                        width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), 
-                        backgroundColor: remaining < 0 ? '#FF4B4B' : '#6B4EFF' 
-                    }]} />
+                <View style={[styles.circularProgress, { borderColor: isDark ? '#2C2C2E' : 'rgba(255,255,255,0.3)' }]}>
+                    <Text style={styles.circularProgressText}>{percentUsed}%</Text>
                 </View>
-                <View style={styles.budgetDetails}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.budgetText}>Total Limit: </Text>
-                        {isEditingBudget ? (
-                            <TextInput
-                                style={styles.inlineBudgetInput}
-                                value={tempBudget}
-                                onChangeText={setTempBudget}
-                                keyboardType="numeric"
-                                autoFocus
-                                selectTextOnFocus
-                            />
-                        ) : (
-                            <Text style={[styles.budgetText, { fontWeight: 'bold', color: '#1A1A1A' }]}>₹{trip.budget.toLocaleString()}</Text>
-                        )}
-                    </View>
-                    <Text style={styles.budgetText}>Used: <AnimatedNumber value={totalSpent} /></Text>
+            </View>
+            
+            <View style={[styles.budgetCardBottom, { borderTopColor: isDark ? '#2C2C2E' : 'rgba(255,255,255,0.2)' }]}>
+                <View>
+                    <Text style={[styles.budgetCardSubLabel, { color: isDark ? '#8E8E93' : 'rgba(255,255,255,0.8)' }]}>Spent</Text>
+                    <Text style={styles.budgetCardSubValue}>₹{totalSpent.toLocaleString()}</Text>
                 </View>
-                <View style={[styles.budgetDetails, { marginTop: 8 }]}>
-                    <Text style={[styles.budgetText, { color: remaining < 0 ? '#FF4B4B' : '#4CAF50', fontWeight: 'bold' }]}>
-                        {remaining < 0 ? 'Shortfall: ' : 'Remaining: '} ₹{Math.abs(remaining).toLocaleString()}
+                <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.budgetCardSubLabel, { color: isDark ? '#8E8E93' : 'rgba(255,255,255,0.8)' }]}>Remaining</Text>
+                    <Text style={[styles.budgetCardSubValue, { color: remaining < 0 ? '#FF4B4B' : (isDark ? '#4CAF50' : '#fff') }]}>
+                        ₹{Math.abs(remaining).toLocaleString()}
                     </Text>
                 </View>
             </View>
@@ -793,26 +952,8 @@ export default function TripDetailsScreen() {
               }
           ]}>
               {!isFullScreen && (
-                  <View style={styles.daySelectorContainer}>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daySelectorScroll}>
-                          {itinerary.map((day) => (
-                              <TouchableOpacity
-                                  key={day.day}
-                                  onPress={() => setSelectedDay(day.day)}
-                                  style={[
-                                      styles.dayButton,
-                                      selectedDay === day.day && styles.selectedDayButton
-                                  ]}
-                              >
-                                  <Text style={[
-                                      styles.dayButtonText,
-                                      selectedDay === day.day && styles.selectedDayButtonText
-                                  ]}>
-                                      Day {day.day}
-                                  </Text>
-                              </TouchableOpacity>
-                          ))}
-                      </ScrollView>
+                  <View style={styles.planningMapHeader}>
+                      <Text style={styles.planningMapTitle}>📍 Journey Preview</Text>
                   </View>
               )}
 
@@ -873,14 +1014,14 @@ export default function TripDetailsScreen() {
 
 
   if (loading) return (
-    <View style={styles.loadingContainer}>
+    <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#121212' : '#F8F9FF' }]}>
       <ActivityIndicator size="large" color="#6B4EFF" />
     </View>
   );
 
   if (!trip) return (
-      <View style={styles.loadingContainer}>
-          <Text style={{ color: '#666' }}>Trip details could not be found.</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#121212' : '#F8F9FF' }]}>
+          <Text style={{ color: isDark ? '#8E8E93' : '#666' }}>Trip details could not be found.</Text>
           <TouchableOpacity style={styles.errorBtn} onPress={() => router.back()}>
               <Text style={{ color: '#fff', fontWeight: 'bold' }}>Go Back</Text>
           </TouchableOpacity>
@@ -888,24 +1029,25 @@ export default function TripDetailsScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8F9FF' }}>
+      <View style={{ flex: 1, backgroundColor: isDark ? (viewMode === 'itinerary' ? '#000' : '#121212') : '#F8F9FF' }}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <Stack.Screen options={{ title: '', headerTransparent: true, headerTintColor: '#fff', headerLeft: () => null }} />
       
       {/* Floating Top Navigation */}
-      <View style={styles.floatingNav}>
+      <View style={[styles.floatingNav, { top: Platform.OS === 'ios' ? 60 : 30 }]}>
           <TouchableOpacity 
-              style={styles.navCircleBtn} 
+              style={[styles.navCircleBtn, { backgroundColor: isDark ? 'rgba(44, 44, 46, 0.9)' : 'rgba(255, 255, 255, 0.9)' }]} 
               onPress={() => router.back()}
               activeOpacity={0.7}
           >
-              <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
+              <Ionicons name="arrow-back" size={22} color={isDark ? '#fff' : '#1A1A1A'} />
           </TouchableOpacity>
           <TouchableOpacity 
-              style={styles.navCircleBtn} 
+              style={[styles.navCircleBtn, { backgroundColor: isDark ? 'rgba(44, 44, 46, 0.9)' : 'rgba(255, 255, 255, 0.9)' }]} 
               onPress={() => router.push('/(tabs)')}
               activeOpacity={0.7}
           >
-              <Ionicons name="home" size={22} color="#1A1A1A" />
+              <Ionicons name="home" size={22} color={isDark ? '#fff' : '#1A1A1A'} />
           </TouchableOpacity>
       </View>
 
@@ -913,8 +1055,8 @@ export default function TripDetailsScreen() {
           {/* Top Banner (Animated) */}
           <Animated.View style={[styles.topBanner, { opacity: fadeAnimHeader, transform: [{ translateY: fadeAnimHeader.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }]}>
               <View style={styles.bannerOverlay}>
-                  <Text style={styles.bannerTitle}>{trip.name}</Text>
-                  <Text style={styles.bannerDest}>{trip.destination_details?.name || 'Your Trip'}</Text>
+                  <Text style={styles.bannerTitle}>{trip.title || trip.name}</Text>
+                  <Text style={styles.bannerDest}>{trip.destination_name || trip.destination_details?.name || 'Your Trip'}</Text>
                   <View style={styles.bannerTags}>
                       <View style={styles.tag}><Ionicons name="calendar" size={14} color="#fff" /><Text style={styles.tagTxt}>{calculateNights(trip)} Nights</Text></View>
                       <View style={styles.tag}><Ionicons name="people" size={14} color="#fff" /><Text style={styles.tagTxt}>{trip.travelers || 2} Travelers</Text></View>
@@ -923,21 +1065,64 @@ export default function TripDetailsScreen() {
           </Animated.View>
 
           <Animated.View style={[styles.contentArea, { opacity: fadeAnimContent, transform: [{ translateY: fadeAnimContent.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }]}>
-              {/* 1. Map View, Instructions, Summary */}
-              {renderMap()}
+              {/* Tabs for switching views */}
+              {renderTabs()}
 
-              {/* 2 & 3. Route & Budget (wrapped with padding) */}
-              <View style={{ paddingHorizontal: 20 }}>
-                  <Text style={[styles.sectionTitle, { marginTop: 20, marginBottom: 15 }]}>Route & Budget</Text>
-                  {renderRoute()}
-                  {renderBudgetInsights()}
-              </View>
+              {viewMode === 'overview' && (
+                  <>
+                      {/* 1. Planning Map & Header */}
+                      {renderMap()}
 
-              {/* 4. Detailed Itinerary */}
-              <View style={{ marginTop: 20 }}>
-                  <Text style={[styles.sectionTitle, { marginLeft: 20 }]}>Day-by-Day Itinerary</Text>
-                  {renderItinerary()}
-              </View>
+                      {/* 2. Trip Summary Insights */}
+                      <View style={[styles.planningSummaryGrid, { backgroundColor: isDark ? '#1C1C1E' : '#fff', borderColor: isDark ? '#2C2C2E' : 'rgba(255,255,255,0.8)' }]}>
+                          <View style={styles.planningSummaryItem}>
+                              <Ionicons name="calendar-outline" size={20} color="#6B4EFF" />
+                              <Text style={styles.planningSummaryLabel}>Duration</Text>
+                              <Text style={[styles.planningSummaryValue, { color: isDark ? '#fff' : '#1A1A1A' }]}>{calculateNights(trip)} Nights</Text>
+                          </View>
+                          <View style={[styles.planningSummaryDivider, { backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]} />
+                          <View style={styles.planningSummaryItem}>
+                              <Ionicons name="people-outline" size={20} color="#6B4EFF" />
+                              <Text style={styles.planningSummaryLabel}>Travelers</Text>
+                              <Text style={[styles.planningSummaryValue, { color: isDark ? '#fff' : '#1A1A1A' }]}>{trip.travelers || 2} Persons</Text>
+                          </View>
+                          <View style={[styles.planningSummaryDivider, { backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]} />
+                          <View style={styles.planningSummaryItem}>
+                              <Ionicons name="wallet-outline" size={20} color="#6B4EFF" />
+                              <Text style={styles.planningSummaryLabel}>Budget</Text>
+                              <Text style={[styles.planningSummaryValue, { color: isDark ? '#fff' : '#1A1A1A' }]}>₹{(trip.total_budget || trip.budget || 0).toLocaleString()}</Text>
+                          </View>
+                      </View>
+
+                      {/* 3. Route & Budget */}
+                      <View style={{ paddingHorizontal: 20 }}>
+                          {renderLocalIntelligence()}
+                          <Text style={[styles.sectionTitle, { marginTop: 25, marginBottom: 15, color: isDark ? '#fff' : '#1A1A1A' }]}>🗺 Route & Financials</Text>
+                          {renderRoute()}
+                          {renderBudgetInsights()}
+                      </View>
+                  </>
+              )}
+
+              {viewMode === 'itinerary' && (
+                  <View style={{ marginTop: 10 }}>
+                      {renderItinerary()}
+                  </View>
+              )}
+
+              {viewMode === 'stays' && renderStays()}
+
+              {viewMode === 'route' && (
+                  <View style={{ flex: 1, minHeight: 600 }}>
+                      <View style={{ paddingHorizontal: 20, paddingVertical: 15 }}>
+                        <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#1A1A1A' }]}>Journey Map & Route</Text>
+                      </View>
+                      {renderMap()}
+                      <View style={{ paddingHorizontal: 20 }}>
+                        {renderRoute()}
+                      </View>
+                  </View>
+              )}
 
               {/* 5. Notes (if any) */}
               {trip.notes ? (
@@ -950,10 +1135,13 @@ export default function TripDetailsScreen() {
       </ScrollView>
 
       {/* Fixed Bottom Action Bar */}
-      <View style={styles.bottomActionBar}>
-          <TouchableOpacity style={styles.actionBtnLight} onPress={() => router.push('/(tabs)')}>
+      <View style={[styles.bottomActionBar, { backgroundColor: isDark ? '#1C1C1E' : '#fff', borderTopColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}>
+          <TouchableOpacity 
+              style={[styles.actionBtnLight, { backgroundColor: isDark ? '#2C2C2E' : '#F0EDFF' }]} 
+              onPress={() => router.push('/(tabs)')}
+          >
               <Ionicons name="home-outline" size={20} color="#6B4EFF" />
-              <Text style={styles.actionBtnLightTxt}>Home</Text>
+              <Text style={[styles.actionBtnLightTxt, { color: isDark ? '#fff' : '#6B4EFF' }]}>Home</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -964,7 +1152,10 @@ export default function TripDetailsScreen() {
               <Text style={styles.actionBtnDarkTxt}>Start Trip</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionBtnDark, { flex: 0.8 }]} onPress={handleDownload}>
+          <TouchableOpacity 
+              style={[styles.actionBtnDark, { backgroundColor: isDark ? '#2C2C2E' : '#6B4EFF', flex: 0.8 }]} 
+              onPress={handleDownload}
+          >
               {downloading ? (
                   <ActivityIndicator color="#fff" size="small" />
               ) : downloadSuccess ? (
@@ -983,20 +1174,21 @@ export default function TripDetailsScreen() {
           onRequestClose={() => setActivityModalVisible(false)}
       >
           <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                  <View style={styles.modalHeader}>
-                      <Text style={styles.modalTitle}>{editingActivity ? 'Edit Activity' : 'Add Activity'}</Text>
+              <View style={[styles.modalContent, { backgroundColor: isDark ? '#1C1C1E' : '#fff' }]}>
+                  <View style={[styles.modalHeader, { borderBottomColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}>
+                      <Text style={[styles.modalTitle, { color: isDark ? '#fff' : '#1A1A1A' }]}>{editingActivity ? 'Edit Activity' : 'Add Activity'}</Text>
                       <TouchableOpacity onPress={() => setActivityModalVisible(false)}>
-                          <Ionicons name="close" size={24} color="#333" />
+                          <Ionicons name="close" size={24} color={isDark ? '#fff' : '#333'} />
                       </TouchableOpacity>
                   </View>
                   
                   <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
                       <View style={styles.field}>
-                          <Text style={styles.fieldLabel}>Activity Title</Text>
+                          <Text style={[styles.fieldLabel, { color: isDark ? '#8E8E93' : '#666' }]}>Activity Title</Text>
                           <TextInput 
-                              style={styles.fieldInput} 
+                              style={[styles.fieldInput, { backgroundColor: isDark ? '#2C2C2E' : '#F8F9FF', color: isDark ? '#fff' : '#1A1A1A', borderColor: isDark ? '#3A3A3C' : '#E0D9FF' }]} 
                               placeholder="e.g. Visit Museum"
+                              placeholderTextColor={isDark ? '#555' : '#ccc'}
                               value={activityForm.title}
                               onChangeText={(t) => setActivityForm({...activityForm, title: t})}
                           />
@@ -1004,19 +1196,21 @@ export default function TripDetailsScreen() {
 
                       <View style={styles.fieldRow}>
                           <View style={[styles.field, { flex: 1, marginRight: 10 }]}>
-                              <Text style={styles.fieldLabel}>Time</Text>
+                              <Text style={[styles.fieldLabel, { color: isDark ? '#8E8E93' : '#666' }]}>Time</Text>
                               <TextInput 
-                                  style={styles.fieldInput} 
+                                  style={[styles.fieldInput, { backgroundColor: isDark ? '#2C2C2E' : '#F8F9FF', color: isDark ? '#fff' : '#1A1A1A', borderColor: isDark ? '#3A3A3C' : '#E0D9FF' }]} 
                                   placeholder="09:00"
+                                  placeholderTextColor={isDark ? '#555' : '#ccc'}
                                   value={activityForm.time}
                                   onChangeText={(t) => setActivityForm({...activityForm, time: t})}
                               />
                           </View>
                           <View style={[styles.field, { flex: 1 }]}>
-                              <Text style={styles.fieldLabel}>Cost (₹)</Text>
+                              <Text style={[styles.fieldLabel, { color: isDark ? '#8E8E93' : '#666' }]}>Cost (₹)</Text>
                               <TextInput 
-                                  style={styles.fieldInput} 
+                                  style={[styles.fieldInput, { backgroundColor: isDark ? '#2C2C2E' : '#F8F9FF', color: isDark ? '#fff' : '#1A1A1A', borderColor: isDark ? '#3A3A3C' : '#E0D9FF' }]} 
                                   placeholder="0"
+                                  placeholderTextColor={isDark ? '#555' : '#ccc'}
                                   keyboardType="numeric"
                                   value={activityForm.cost}
                                   onChangeText={(t) => setActivityForm({...activityForm, cost: t})}
@@ -1025,34 +1219,47 @@ export default function TripDetailsScreen() {
                       </View>
 
                       <View style={styles.field}>
-                          <Text style={styles.fieldLabel}>Location</Text>
+                          <Text style={[styles.fieldLabel, { color: isDark ? '#8E8E93' : '#666' }]}>Location</Text>
                           <TextInput 
-                              style={styles.fieldInput} 
+                              style={[styles.fieldInput, { backgroundColor: isDark ? '#2C2C2E' : '#F8F9FF', color: isDark ? '#fff' : '#1A1A1A', borderColor: isDark ? '#3A3A3C' : '#E0D9FF' }]} 
                               placeholder="Specific spot name"
+                              placeholderTextColor={isDark ? '#555' : '#ccc'}
                               value={activityForm.location}
                               onChangeText={(t) => setActivityForm({...activityForm, location: t})}
                           />
                       </View>
 
                       <View style={styles.field}>
-                          <Text style={styles.fieldLabel}>Category</Text>
+                          <Text style={[styles.fieldLabel, { color: isDark ? '#8E8E93' : '#666' }]}>Personal Notes</Text>
+                          <TextInput 
+                              style={[styles.fieldInput, { height: 80, textAlignVertical: 'top', backgroundColor: isDark ? '#2C2C2E' : '#F8F9FF', color: isDark ? '#fff' : '#1A1A1A', borderColor: isDark ? '#3A3A3C' : '#E0D9FF' }]} 
+                              placeholder="e.g. Bring water, photography tips, etc."
+                              placeholderTextColor={isDark ? '#555' : '#ccc'}
+                              multiline
+                              value={activityForm.notes}
+                              onChangeText={(t) => setActivityForm({...activityForm, notes: t})}
+                          />
+                      </View>
+
+                      <View style={styles.field}>
+                          <Text style={[styles.fieldLabel, { color: isDark ? '#8E8E93' : '#666' }]}>Category</Text>
                           <View style={styles.catGrid}>
                               {['sightseeing', 'food', 'travel', 'accommodation', 'other'].map(cat => (
                                   <TouchableOpacity 
                                       key={cat}
-                                      style={[styles.catChip, activityForm.category === cat && styles.catChipActive]}
+                                      style={[styles.catChip, { backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }, activityForm.category === cat && styles.catChipActive]}
                                       onPress={() => setActivityForm({...activityForm, category: cat})}
                                   >
-                                      <Text style={[styles.catChipTxt, activityForm.category === cat && styles.catChipTxtActive]}>{cat}</Text>
+                                      <Text style={[styles.catChipTxt, { color: isDark ? '#8E8E93' : '#666' }, activityForm.category === cat && styles.catChipTxtActive]}>{cat}</Text>
                                   </TouchableOpacity>
                               ))}
                           </View>
                       </View>
                   </ScrollView>
 
-                  <View style={styles.modalFooter}>
-                      <TouchableOpacity style={styles.cancelBtn} onPress={() => setActivityModalVisible(false)}>
-                          <Text style={styles.cancelBtnTxt}>Cancel</Text>
+                  <View style={[styles.modalFooter, { borderTopColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}>
+                      <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5' }]} onPress={() => setActivityModalVisible(false)}>
+                          <Text style={[styles.cancelBtnTxt, { color: isDark ? '#fff' : '#666' }]}>Cancel</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.saveBtn} onPress={handleSaveActivity}>
                           <Text style={styles.saveBtnTxt}>{editingActivity ? 'Update' : 'Add Activity'}</Text>
@@ -1278,9 +1485,191 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  daySelectorContainer: { backgroundColor: '#fff', paddingVertical: 12, marginBottom: 5 },
-  daySelectorScroll: { paddingHorizontal: 15, gap: 10, flexDirection: 'row' },
+  daySelectorContainer: { backgroundColor: '#fff', paddingVertical: 12 },
+  daySelectorScroll: { paddingHorizontal: 0, gap: 10, flexDirection: 'row' },
+  planningMapHeader: { paddingHorizontal: 20, marginBottom: 10 },
+  planningMapTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', marginBottom: 10 },
   dayButton: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F8F9FF', borderWidth: 1, borderColor: '#F0F0FF', minWidth: 80, alignItems: 'center' },
+  planningSummaryGrid: { flexDirection: 'row', backgroundColor: '#fff', marginHorizontal: 20, marginTop: -30, borderRadius: 24, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 15, elevation: 8, zIndex: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)', alignItems: 'center' },
+  planningSummaryItem: { flex: 1, alignItems: 'center' },
+  planningSummaryLabel: { fontSize: 10, color: '#888', fontWeight: '800', textTransform: 'uppercase', marginTop: 8, letterSpacing: 0.5 },
+  planningSummaryValue: { fontSize: 14, color: '#1A1A1A', fontWeight: '900', marginTop: 4 },
+  planningSummaryDivider: { width: 1, height: 40, backgroundColor: '#F0F0F0' },
+  // --- IMAGE MATCH STYLES ---
+  imageMatchBudgetCard: {
+    backgroundColor: '#B19DFF', // Lavender
+    borderRadius: 30,
+    padding: 25,
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  budgetCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 25,
+  },
+  budgetCardLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    marginBottom: 5,
+  },
+  budgetCardValue: {
+    fontSize: 32,
+    color: '#fff',
+    fontWeight: '900',
+  },
+  circularProgress: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circularProgressText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '800',
+  },
+  budgetCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+    paddingTop: 20,
+  },
+  budgetCardSubLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  budgetCardSubValue: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '800',
+  },
+  imageMatchDayCard: {
+    backgroundColor: '#1C1C1E', // Dark Grey/Black
+    borderRadius: 25,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+  },
+  imageMatchDayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  imageMatchDayTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  imageMatchDayDate: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  imageMatchAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2C2C2E',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  imageMatchAddBtnTxt: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  imageMatchActivityRow: {
+    flexDirection: 'row',
+    marginBottom: 15,
+  },
+  imageMatchTimeline: {
+    width: 50,
+    alignItems: 'center',
+    paddingTop: 2,
+  },
+  imageMatchActivityTime: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  imageMatchTimelineLineContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  imageMatchTimelineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    zIndex: 1,
+  },
+  imageMatchTimelineLine: {
+    width: 1,
+    flex: 1,
+    backgroundColor: '#3A3A3C',
+    marginVertical: 4,
+  },
+  imageMatchActivityCard: {
+    flex: 1,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 18,
+    padding: 15,
+    marginLeft: 5,
+  },
+  imageMatchActivityTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  imageMatchActivityTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#fff',
+    flex: 1,
+    marginRight: 10,
+  },
+  imageMatchActivityCost: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#B19DFF',
+  },
+  imageMatchActivityCategoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  imageMatchActivityCategoryTxt: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  itineraryContainer: { 
+    paddingBottom: 20,
+    backgroundColor: '#000', // Full black for itinerary tab
+  },
+  planningEditBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0EDFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, gap: 6 },
+  planningEditBtnTxt: { fontSize: 12, fontWeight: '700', color: '#6B4EFF' },
+  planningAddActivityMain: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', marginHorizontal: 20, marginTop: 20, paddingVertical: 15, borderRadius: 16, borderStyle: 'dashed', borderWidth: 2, borderColor: '#E0D9FF', gap: 8 },
+  planningAddActivityMainTxt: { fontSize: 14, fontWeight: '700', color: '#6B4EFF' },
   selectedDayButton: { backgroundColor: '#6B4EFF', borderColor: '#6B4EFF', shadowColor: '#6B4EFF', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   dayButtonText: { fontSize: 13, fontWeight: '700', color: '#6B4EFF' },
   selectedDayButtonText: { color: '#fff' },
@@ -1395,5 +1784,193 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 15,
+  },
+  // --- RESTORED RICH UI STYLES ---
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    marginBottom: 10,
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 6,
+    borderRadius: 12,
+  },
+  activeTabItem: {
+    backgroundColor: '#F0EDFF',
+  },
+  tabLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  activeTabLabel: {
+    color: '#6B4EFF',
+  },
+  intelligenceCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  intelligenceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    gap: 10,
+  },
+  intelligenceTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  intelItem: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 15,
+  },
+  intelIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#F8F9FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  intelLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  intelValue: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 18,
+  },
+  intelSubValue: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 4,
+  },
+  advisorHeaderBox: {
+    backgroundColor: '#F0EDFF',
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#6B4EFF',
+  },
+  advisorAreaTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: 5,
+  },
+  advisorAreaDesc: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 18,
+  },
+  hotelCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  hotelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  hotelBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  hotelBadge: {
+    backgroundColor: '#F0EDFF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  hotelBadgeTxt: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B4EFF',
+  },
+  hotelType: {
+    fontSize: 11,
+    color: '#999',
+    fontWeight: '600',
+  },
+  hotelName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  priceTag: {
+    alignItems: 'flex-end',
+  },
+  priceVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#6B4EFF',
+  },
+  priceLabel: {
+    fontSize: 10,
+    color: '#999',
+  },
+  hotelDesc: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 15,
+  },
+  hotelMeta: {
+    flexDirection: 'row',
+    gap: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    paddingTop: 12,
+  },
+  hotelMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  hotelMetaTxt: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '600',
+  },
+  emptyStays: {
+    padding: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStaysText: {
+    marginTop: 15,
+    color: '#999',
+    textAlign: 'center',
+    fontSize: 14,
   },
 });

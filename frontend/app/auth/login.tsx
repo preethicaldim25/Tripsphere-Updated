@@ -20,6 +20,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
 
+const RequirementItem = ({ met, text }: { met: boolean; text: string }) => (
+  <View style={styles.requirementItem}>
+    <Ionicons 
+      name={met ? "checkmark-circle" : "ellipse-outline"} 
+      size={14} 
+      color={met ? "#00C851" : "#A0A0A0"} 
+    />
+    <Text style={[styles.requirementText, { color: met ? "#00C851" : "#A0A0A0" }]}>
+      {text}
+    </Text>
+  </View>
+);
+
 export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'login' | 'register' }) {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [name, setName] = useState('');
@@ -28,12 +41,46 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    length: false,
+    upper: false,
+    lower: false,
+    number: false,
+    special: false,
+  });
 
   const { login, register } = useAuth();
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const checkPasswordStrength = (pass: string) => {
+    const requirements = {
+      length: pass.length >= 8,
+      upper: /[A-Z]/.test(pass),
+      lower: /[a-z]/.test(pass),
+      number: /[0-9]/.test(pass),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(pass),
+    };
+    setPasswordRequirements(requirements);
+
+    let strength = 0;
+    if (requirements.length) strength += 1;
+    if (requirements.upper) strength += 1;
+    if (requirements.lower) strength += 1;
+    if (requirements.number) strength += 1;
+    if (requirements.special) strength += 1;
+    
+    setPasswordStrength(strength);
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (!isLogin) {
+      checkPasswordStrength(text);
+    }
+  };
 
   const toggleAuthMode = () => {
     Animated.timing(fadeAnim, {
@@ -42,6 +89,10 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
       useNativeDriver: true,
     }).start(() => {
       setIsLogin(!isLogin);
+      // Reset validation states
+      if (isLogin) {
+        checkPasswordStrength(password);
+      }
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 200,
@@ -56,55 +107,76 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
 
   const handleAuth = async () => {
     // Validation
-    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedIdentifier = email.trim().toLowerCase();
     const trimmedPassword = password.trim();
     const trimmedName = name.trim();
 
-    if (!trimmedEmail || !trimmedPassword || (!isLogin && !trimmedName)) {
+    if (!trimmedIdentifier || !trimmedPassword || (!isLogin && !trimmedName)) {
       Alert.alert('Error', 'Please fill all required fields');
       return;
     }
 
-    if (!validateEmail(trimmedEmail)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
+    if (!isLogin) {
+      if (!validateEmail(trimmedIdentifier)) {
+        Alert.alert('Error', 'Please enter a valid email address');
+        return;
+      }
 
-    if (trimmedPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
+      if (passwordStrength < 5) {
+        Alert.alert('Weak Password', 'Password must contain uppercase, lowercase, number and special character (min 8 chars).');
+        return;
+      }
 
-    if (!isLogin && trimmedPassword !== confirmPassword.trim()) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
+      if (trimmedPassword !== confirmPassword.trim()) {
+        Alert.alert('Error', 'Passwords do not match');
+        return;
+      }
     }
 
     setLoading(true);
     try {
       if (isLogin) {
-        const result = await login(trimmedEmail, trimmedPassword);
+        const result = await login(trimmedIdentifier, trimmedPassword);
         if (result.success) {
           router.replace('/(tabs)');
+        } else if (result.needsVerification) {
+          // User registered but hasn't verified — redirect to OTP screen
+          Alert.alert('Verification Required', 'Please verify your email before login.');
+          router.push(`/auth/verify-otp?email=${encodeURIComponent(trimmedIdentifier)}`);
         } else {
-          Alert.alert('Login Failed', result.error || 'Invalid credentials');
+          Alert.alert('Login Failed', result.error || 'Invalid email/username or password');
         }
       } else {
-        const result = await register(trimmedName, trimmedEmail, trimmedPassword);
+        const result = await register(trimmedName, trimmedIdentifier, trimmedPassword);
         if (result.success) {
-          Alert.alert('Success', 'Account created successfully!', [
-            { text: 'OK', onPress: () => router.replace('/(tabs)') }
-          ]);
+          if (result.message) {
+            Alert.alert('Pending Verification', result.message);
+          }
+          // New user or pending user — go to OTP verification screen
+          router.push(`/auth/verify-otp?email=${encodeURIComponent(trimmedIdentifier)}`);
         } else {
           Alert.alert('Registration Failed', result.error || 'Could not create account');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auth error:', error);
-      Alert.alert('Network Error', 'Could not connect to server. Please check your internet and API configuration.');
+      Alert.alert('Error', error.message || 'Could not connect to server.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getStrengthColor = () => {
+    if (passwordStrength <= 2) return '#FF4D4D';
+    if (passwordStrength <= 4) return '#FFAD33';
+    return '#00C851';
+  };
+
+  const getStrengthText = () => {
+    if (passwordStrength === 0) return '';
+    if (passwordStrength <= 2) return 'Weak';
+    if (passwordStrength <= 4) return 'Medium';
+    return 'Strong';
   };
 
   return (
@@ -153,10 +225,10 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                 <Ionicons name="mail-outline" size={20} color="#6B4EFF" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Email Address"
+                  placeholder={isLogin ? "Email or Username" : "Email Address"}
                   value={email}
                   onChangeText={setEmail}
-                  keyboardType="email-address"
+                  keyboardType={isLogin ? "default" : "email-address"}
                   autoCapitalize="none"
                   placeholderTextColor="#A0A0A0"
                 />
@@ -168,7 +240,7 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                   style={styles.input}
                   placeholder="Password"
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={handlePasswordChange}
                   secureTextEntry={!showPassword}
                   placeholderTextColor="#A0A0A0"
                 />
@@ -176,6 +248,36 @@ export default function AuthScreen({ initialMode = 'login' }: { initialMode?: 'l
                   <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6B4EFF" />
                 </TouchableOpacity>
               </View>
+
+              {!isLogin && password.length > 0 && (
+                <View style={styles.strengthContainer}>
+                  <View style={styles.strengthHeader}>
+                    <Text style={styles.strengthLabel}>Password Strength: </Text>
+                    <Text style={[styles.strengthText, { color: getStrengthColor() }]}>
+                      {getStrengthText()}
+                    </Text>
+                  </View>
+                  <View style={styles.strengthBarContainer}>
+                    <View 
+                      style={[
+                        styles.strengthBar, 
+                        { 
+                          width: `${(passwordStrength / 5) * 100}%`,
+                          backgroundColor: getStrengthColor() 
+                        }
+                      ]} 
+                    />
+                  </View>
+                  
+                  <View style={styles.requirementsGrid}>
+                    <RequirementItem met={passwordRequirements.length} text="8+ Characters" />
+                    <RequirementItem met={passwordRequirements.upper} text="Uppercase" />
+                    <RequirementItem met={passwordRequirements.lower} text="Lowercase" />
+                    <RequirementItem met={passwordRequirements.number} text="Number" />
+                    <RequirementItem met={passwordRequirements.special} text="Special Char" />
+                  </View>
+                </View>
+              )}
 
               {!isLogin && (
                 <View style={styles.inputWrapper}>
@@ -397,5 +499,49 @@ const styles = StyleSheet.create({
     color: '#6B4EFF',
     fontSize: 13,
     fontWeight: '600',
+  },
+  strengthContainer: {
+    marginTop: 10,
+    marginBottom: 15,
+    width: '100%',
+  },
+  strengthHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  strengthLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  strengthText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  strengthBarContainer: {
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    width: '100%',
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  strengthBar: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  requirementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  requirementText: {
+    fontSize: 10,
+    marginLeft: 4,
   },
 });

@@ -22,43 +22,43 @@ export interface RegisterData {
 }
 
 export interface LoginData {
-  email: string;
+  identifier: string; // Email or Username
   password: string;
 }
 
 export const authService = {
   /* Register new user */
-  register: async (name: string, email: string, password: string): Promise<LoginResponse | null> => {
+  register: async (name: string, email: string, password: string, username?: string): Promise<any | null> => {
     try {
-      console.log('AuthService: Registering user:', { name, email });
+      console.log('AuthService: Registering user:', { name, email, username });
       
-      const response = await authAPI.register({ name, email, password });
+      const response = await authAPI.register({ name, email, password, username });
       
       console.log('AuthService: Registration response:', response);
       
       if (response && response.access_token) {
-        // Store token and user data
+        // Store token and user data (even if unverified)
         await AsyncStorage.setItem('jwt_token', response.access_token);
         await AsyncStorage.setItem('user_data', JSON.stringify(response.user));
-        await AsyncStorage.setItem('token', response.access_token); // For compatibility with existing code
-        await AsyncStorage.setItem('user', JSON.stringify(response.user)); // For compatibility
+        await AsyncStorage.setItem('token', response.access_token);
+        await AsyncStorage.setItem('user', JSON.stringify(response.user));
         
         return response;
       }
       
-      return null;
+      return response;
     } catch (error: any) {
       console.error('AuthService: Registration error:', error.message);
-      return null;
+      throw error;
     }
   },
 
   /* Login user */
-  login: async (email: string, password: string): Promise<LoginResponse | null> => {
+  login: async (identifier: string, password: string): Promise<LoginResponse | null> => {
     try {
-      console.log('AuthService: Logging in user:', { email });
+      console.log('AuthService: Logging in user:', { identifier });
       
-      const response = await authAPI.login({ email, password });
+      const response = await authAPI.login({ identifier, password });
       
       console.log('AuthService: Login response:', response);
       
@@ -66,8 +66,8 @@ export const authService = {
         // Store token and user data
         await AsyncStorage.setItem('jwt_token', response.access_token);
         await AsyncStorage.setItem('user_data', JSON.stringify(response.user));
-        await AsyncStorage.setItem('token', response.access_token); // For compatibility with existing code
-        await AsyncStorage.setItem('user', JSON.stringify(response.user)); // For compatibility
+        await AsyncStorage.setItem('token', response.access_token);
+        await AsyncStorage.setItem('user', JSON.stringify(response.user));
         
         return response;
       }
@@ -75,7 +75,37 @@ export const authService = {
       return null;
     } catch (error: any) {
       console.error('AuthService: Login error:', error.message);
-      return null;
+      throw error;
+    }
+  },
+
+  /* Verify OTP */
+  verifyOTP: async (email: string, otp: string): Promise<any> => {
+    try {
+      const response = await authAPI.verifyOtp(email, otp);
+      console.log('AuthService: OTP Verification response:', response);
+      
+      // If the backend returns a token upon verification (it currently doesn't, but just in case)
+      if (response.access_token) {
+        await AsyncStorage.setItem('jwt_token', response.access_token);
+        await AsyncStorage.setItem('user_data', JSON.stringify(response.user));
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('AuthService: OTP Verification error:', error.message);
+      throw error;
+    }
+  },
+
+  /* Resend OTP */
+  resendOTP: async (email: string): Promise<any> => {
+    try {
+      const response = await authAPI.resendOtp(email);
+      return response;
+    } catch (error: any) {
+      console.error('AuthService: Resend OTP error:', error.message);
+      throw error;
     }
   },
 

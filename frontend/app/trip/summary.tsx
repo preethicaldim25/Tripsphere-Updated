@@ -51,7 +51,7 @@ export default function BudgetSummaryScreen() {
         const allActivities = itinerary.flatMap(day => day.activities);
         
         const totalSpent = allActivities.reduce((sum, act) => sum + (act.cost || 0), 0);
-        const plannedBudget = trip.budget || 0;
+        const plannedBudget = trip.total_budget || trip.budget || 0;
         
         // Category breakdown
         const categoryMap: Record<string, { spent: number; color: string }> = {
@@ -90,8 +90,8 @@ export default function BudgetSummaryScreen() {
         const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
         return {
-            name: trip.name,
-            destination: trip.destination,
+            name: trip.title || trip.name,
+            destination: trip.destination_name || trip.destination,
             totalBudget: plannedBudget,
             spent: totalSpent,
             remaining: plannedBudget - totalSpent,

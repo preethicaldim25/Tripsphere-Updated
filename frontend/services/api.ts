@@ -6,9 +6,14 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username?: string;
   role: string;
   created_at?: string;
   updated_at?: string;
+  location?: string;
+  tagline?: string;
+  profile_image?: string;
+  message?: string;
 }
 
 export interface AuthResponse {
@@ -17,8 +22,15 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface OTPVerifyResponse {
+  message: string;
+  access_token?: string;
+  token_type?: string;
+  user: User;
+}
+
 export interface LoginCredentials {
-  email: string;
+  identifier: string; // Email or Username
   password: string;
 }
 
@@ -26,6 +38,7 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  username?: string;
 }
 
 export interface Destination {
@@ -109,7 +122,10 @@ export interface Trip {
 
 export interface TripCreate {
   title: string;
-  destination_id: string;
+  destination_name: string;
+  location: string;
+  destination_id?: string;
+  destination_image?: string;
   start_location?: string;
   stops?: string[];
   start_date: string;
@@ -373,6 +389,12 @@ export const authAPI = {
   getMe: (): Promise<User> =>
     apiClient<User>('/auth/me'),
 
+  updateProfile: (data: Partial<User>): Promise<User> =>
+    apiClient<User>('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   savePlace: (placeId: string): Promise<any> =>
     apiClient('/auth/save-place', {
       method: 'POST',
@@ -386,6 +408,24 @@ export const authAPI = {
 
   getSavedPlaces: (): Promise<Destination[]> =>
     apiClient<Destination[]>('/auth/saved-places'),
+
+  sendOtp: (email: string): Promise<{ message: string }> =>
+    apiClient<{ message: string }>('/auth/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resendOtp: (email: string): Promise<{ message: string }> =>
+    apiClient<{ message: string }>('/auth/resend-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  verifyOtp: (email: string, otp: string): Promise<OTPVerifyResponse> =>
+    apiClient<OTPVerifyResponse>('/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    }),
 };
 
 export const destinationsAPI = {

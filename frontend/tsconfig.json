@@ -4,11 +4,7 @@
     "strict": true,
     "esModuleInterop": true,
     "jsx": "react-native",
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+    "moduleResolution": "bundler"
   },
   "include": [
     "**/*.ts",

@@ -2,12 +2,71 @@ import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/themecontext';
-import { TouchableOpacity, View, Platform, Modal, StyleSheet, Animated, Dimensions, StatusBar, Text } from 'react-native';
+import {
+  TouchableOpacity,
+  View,
+  Platform,
+  Modal,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  StatusBar,
+  Text,
+} from 'react-native';
 import React, { useState, useRef } from 'react';
 import CustomSidebar from '../../components/CustomSidebar';
 
 const { width } = Dimensions.get('window');
 
+// ─── Tab bar icon with active indicator ──────────────────────────────────────
+function TabIcon({
+  name,
+  focused,
+  color,
+}: {
+  name: keyof typeof Ionicons.glyphMap;
+  focused: boolean;
+  color: string;
+}) {
+  return (
+    <View style={tabIconStyles.wrapper}>
+      {focused && <View style={tabIconStyles.activeGlow} />}
+      <View style={[tabIconStyles.iconWrap, focused && tabIconStyles.iconWrapActive]}>
+        <Ionicons name={name} size={22} color={color} />
+      </View>
+    </View>
+  );
+}
+
+const tabIconStyles = StyleSheet.create({
+  wrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 48,
+    height: 48,
+  },
+  activeGlow: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(124,92,255,0.12)',
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconWrapActive: {
+    backgroundColor: 'rgba(124,92,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(124,92,255,0.35)',
+  },
+});
+
+// ─── Main layout ─────────────────────────────────────────────────────────────
 export default function TabsLayout() {
   const { theme, toggleTheme, colors } = useTheme();
   const { isAuthenticated, user } = useAuth();
@@ -17,96 +76,67 @@ export default function TabsLayout() {
 
   const toggleSidebar = () => {
     if (sidebarVisible) {
-      Animated.timing(slideAnim, {
-        toValue: -300,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => setSidebarVisible(false));
+      Animated.timing(slideAnim, { toValue: -300, duration: 280, useNativeDriver: true }).start(() =>
+        setSidebarVisible(false)
+      );
     } else {
       setSidebarVisible(true);
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      Animated.timing(slideAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
     }
   };
 
   return (
     <>
-      <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={colors.card} />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textSecondary,
+          headerShown: false,
+          tabBarActiveTintColor: '#7C5CFF',
+          tabBarInactiveTintColor: 'rgba(255,255,255,0.35)',
           tabBarStyle: {
-            backgroundColor: colors.card,
+            backgroundColor: '#0F0F22',
             borderTopWidth: 0,
-            height: Platform.OS === 'ios' ? 70 : 65,
-            paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-            paddingTop: 10,
+            height: Platform.OS === 'ios' ? 80 : 68,
+            paddingBottom: Platform.OS === 'ios' ? 22 : 8,
+            paddingTop: 8,
             position: 'absolute',
-            bottom: Platform.OS === 'ios' ? 20 : 15,
-            left: '5%',
-            right: '5%',
-            width: '90%',
+            bottom: Platform.OS === 'ios' ? 18 : 12,
+            left: '6%',
+            right: '6%',
+            width: '88%',
             alignSelf: 'center',
-            borderRadius: 25,
-            elevation: 10,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 10,
+            borderRadius: 28,
+            elevation: 20,
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.35,
+            shadowRadius: 20,
             zIndex: 100,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.06)',
           },
           tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '500',
+            fontSize: 11,
+            fontWeight: '600',
+            letterSpacing: 0.2,
+            marginTop: -2,
           },
-          headerStyle: {
-            backgroundColor: colors.card,
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+          tabBarItemStyle: {
+            paddingTop: 4,
           },
-          headerTitleStyle: {
-            color: colors.text,
-            fontWeight: 'bold',
-          },
-          headerLeft: () => (
-            <TouchableOpacity onPress={toggleSidebar} style={{ marginLeft: 15, padding: 8 }}>
-              <Ionicons name="menu-outline" size={28} color={colors.primary} />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', marginRight: 15, alignItems: 'center', gap: 10 }}>
-              <TouchableOpacity onPress={toggleTheme} style={{ padding: 8 }}>
-                <Ionicons 
-                  name={theme === 'light' ? 'moon-outline' : 'sunny-outline'} 
-                  size={24} 
-                  color={colors.primary} 
-                />
-              </TouchableOpacity>
-              {isAuthenticated && (
-                <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-                  <View style={[styles.miniAvatar, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.miniAvatarText}>
-                      {user?.name?.charAt(0).toUpperCase() || 'U'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
-          ),
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
             title: 'Home',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="home-outline" size={size} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <TabIcon name={focused ? 'home' : 'home-outline'} focused={focused} color={color} />
             ),
           }}
         />
@@ -114,8 +144,8 @@ export default function TabsLayout() {
           name="explore"
           options={{
             title: 'Explore',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="compass-outline" size={size} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <TabIcon name={focused ? 'compass' : 'compass-outline'} focused={focused} color={color} />
             ),
           }}
         />
@@ -123,8 +153,8 @@ export default function TabsLayout() {
           name="trips"
           options={{
             title: 'Trips',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="map-outline" size={size} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <TabIcon name={focused ? 'map' : 'map-outline'} focused={focused} color={color} />
             ),
           }}
         />
@@ -132,8 +162,8 @@ export default function TabsLayout() {
           name="profile"
           options={{
             title: 'Profile',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="person-outline" size={size} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <TabIcon name={focused ? 'person' : 'person-outline'} focused={focused} color={color} />
             ),
           }}
         />
@@ -147,16 +177,13 @@ export default function TabsLayout() {
         onRequestClose={toggleSidebar}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
-            style={styles.backdrop} 
-            activeOpacity={1} 
-            onPress={toggleSidebar} 
+          <TouchableOpacity
+            style={styles.backdrop}
+            activeOpacity={1}
+            onPress={toggleSidebar}
           />
-          <Animated.View 
-            style={[
-              styles.sidebarContainer, 
-              { transform: [{ translateX: slideAnim }] }
-            ]}
+          <Animated.View
+            style={[styles.sidebarContainer, { transform: [{ translateX: slideAnim }] }]}
           >
             <CustomSidebar onClose={toggleSidebar} />
           </Animated.View>
@@ -173,7 +200,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   sidebarContainer: {
     width: 300,
@@ -181,8 +208,8 @@ const styles = StyleSheet.create({
     elevation: 20,
     shadowColor: '#000',
     shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
   },
   miniAvatar: {
     width: 32,
