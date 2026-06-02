@@ -1,4 +1,4 @@
-import { API_URL } from '../get_urls';
+import { API_URL } from '../../get_urls';
 
 /**
  * Service for fetching destination related data.

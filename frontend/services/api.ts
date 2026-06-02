@@ -197,16 +197,6 @@ export interface Activity {
   completed?: boolean;
 }
 
-export interface Expense {
-  _id: string;
-  trip_id: string;
-  category: string;
-  amount: number;
-  description: string;
-  date: string;
-  created_at: string;
-}
-
 // Add itinerary API methods
 export const itineraryAPI = {
   getByTrip: (tripId: string): Promise<DayItinerary[]> =>

@@ -7,9 +7,6 @@ const config = getDefaultConfig(__dirname);
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'web.js', 'web.ts', 'web.tsx', 'mjs'];
 config.resolver.assetExts = [...config.resolver.assetExts, 'css'];
 
-// Explicitly map leaflet to its distribution file to bypass main resolution issues
-config.resolver.extraNodeModules = {
-  'leaflet': path.resolve(__dirname, 'node_modules/leaflet'),
-};
+// Removed explicit Leaflet mapping to let Metro resolve normally
 
 module.exports = config;
